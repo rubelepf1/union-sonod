@@ -1,5 +1,10 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,12 +32,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FamilyRestroom
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,9 +54,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -57,33 +66,37 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.CertificateRegistry
 import com.example.data.model.CertificateType
 import com.example.data.model.UnionProfile
+import com.example.data.model.UserProfile
 import com.example.ui.components.UpBottomNav
 import com.example.ui.components.UpTopAppBar
 import com.example.ui.theme.BdGreenContainer
 import com.example.ui.theme.BdGreenDark
 import com.example.ui.theme.BdGreenPrimary
 import com.example.ui.theme.BdRedAccent
-import com.example.ui.theme.GoldAccent
 import com.example.ui.viewmodel.ScreenState
 import com.example.util.BanglaHelper
 
 @Composable
 fun HomeScreen(
     unionProfile: UnionProfile?,
+    currentUser: UserProfile?,
+    certificateTypes: List<CertificateType>,
+    pendingSyncCount: Int,
+    isSyncing: Boolean,
     totalCertificatesCount: Int,
     searchQuery: String,
     selectedCategory: String,
     onSearchChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
     onSelectCertificate: (CertificateType) -> Unit,
+    onTriggerSync: () -> Unit,
     onNavigate: (ScreenState) -> Unit
 ) {
     val categories = listOf("সকল", "নাগরিক সেবা", "উত্তরাধিকার", "আর্থিক সেবা", "সামাজিক সুরক্ষা", "বিশেষ প্রত্যয়ন", "বাণিজ্যিক সেবা")
 
-    val filteredList = CertificateRegistry.ALL_TYPES.filter { cert ->
+    val filteredList = certificateTypes.filter { cert ->
         val matchesCategory = selectedCategory == "সকল" || cert.category == selectedCategory
         val matchesSearch = searchQuery.isBlank() ||
                 cert.title.contains(searchQuery, ignoreCase = true) ||
@@ -92,11 +105,45 @@ fun HomeScreen(
         matchesCategory && matchesSearch
     }
 
+    // Sync rotation animation
+    val infiniteTransition = rememberInfiniteTransition(label = "sync")
+    val angle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing)
+        ),
+        label = "rotation"
+    )
+
     Scaffold(
         topBar = {
             UpTopAppBar(
                 title = unionProfile?.unionName?.ifBlank { "ইউনিয়ন পরিষদ" } ?: "ইউপি সনদ",
-                subtitle = "উপজেলা: ${unionProfile?.upazila ?: ""}, জেলা: ${unionProfile?.district ?: ""}"
+                subtitle = "উপজেলা: ${unionProfile?.upazila ?: ""}, জেলা: ${unionProfile?.district ?: ""}",
+                actions = {
+                    IconButton(
+                        onClick = onTriggerSync,
+                        modifier = Modifier.testTag("appbar_sync_button")
+                    ) {
+                        Box(contentAlignment = Alignment.TopEnd) {
+                            Icon(
+                                imageVector = if (isSyncing) Icons.Default.Sync else Icons.Default.CloudSync,
+                                contentDescription = "ক্লাউড সিঙ্ক",
+                                tint = Color.White,
+                                modifier = if (isSyncing) Modifier.rotate(angle) else Modifier
+                            )
+                            if (pendingSyncCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(BdRedAccent)
+                                )
+                            }
+                        }
+                    }
+                }
             )
         },
         bottomBar = {
@@ -123,6 +170,8 @@ fun HomeScreen(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 HomeBanner(
                     unionProfile = unionProfile,
+                    currentUser = currentUser,
+                    pendingSyncCount = pendingSyncCount,
                     totalCount = totalCertificatesCount
                 )
             }
@@ -254,12 +303,12 @@ fun HomeScreen(
 @Composable
 fun HomeBanner(
     unionProfile: UnionProfile?,
+    currentUser: UserProfile?,
+    pendingSyncCount: Int,
     totalCount: Int
 ) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = BdGreenPrimary
-        ),
+        colors = CardDefaults.cardColors(containerColor = BdGreenPrimary),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier = Modifier.fillMaxWidth()
@@ -271,22 +320,42 @@ fun HomeBanner(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Surface(
-                    color = Color.White.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(6.dp)
-                ) {
-                    Text(
-                        text = "অফলাইন ডিজিটাল সেবা",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = if (currentUser != null) currentUser.roleTitleBn else "অফলাইন গেস্ট মোড",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+
+                    if (pendingSyncCount > 0) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            color = BdRedAccent,
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "${BanglaHelper.toBanglaDigits(pendingSyncCount)} টি সিঙ্ক বাকি",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
+
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "চেয়ারম্যান: ${unionProfile?.chairmanName?.ifBlank { "চেয়ারম্যান" } ?: "চেয়ারম্যান"}",
+                    text = if (currentUser != null) currentUser.fullName else (unionProfile?.chairmanName?.ifBlank { "চেয়ারম্যান" } ?: "চেয়ারম্যান"),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -326,9 +395,7 @@ fun CertificateCard(
     onClick: () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(14.dp),
         elevation = CardDefaults.cardElevation(1.5.dp),
         modifier = Modifier

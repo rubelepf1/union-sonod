@@ -4,20 +4,23 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.data.model.CachedCertificateType
 import com.example.data.model.GeneratedCertificate
 import com.example.data.model.UnionProfile
 
 @Database(
     entities = [
         GeneratedCertificate::class,
-        UnionProfile::class
+        UnionProfile::class,
+        CachedCertificateType::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun certificateDao(): CertificateDao
     abstract fun unionProfileDao(): UnionProfileDao
+    abstract fun cachedCertificateTypeDao(): CachedCertificateTypeDao
 
     companion object {
         @Volatile
@@ -29,7 +32,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "up_sonod_database"
-                ).fallbackToDestructiveMigration().build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

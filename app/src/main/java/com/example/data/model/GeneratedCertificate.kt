@@ -3,10 +3,22 @@ package com.example.data.model
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+object SyncStatus {
+    const val SYNCED = "SYNCED"
+    const val PENDING_INSERT = "PENDING_INSERT"
+    const val PENDING_UPDATE = "PENDING_UPDATE"
+    const val PENDING_DELETE = "PENDING_DELETE"
+}
+
 @Entity(tableName = "generated_certificates")
 data class GeneratedCertificate(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
+    val remoteId: String? = null,
+    val unionRemoteId: String? = null,
+    val createdByRemoteId: String? = null,
+    val syncStatus: String = SyncStatus.PENDING_INSERT,
+    val isDeleted: Boolean = false,
     val certificateTypeId: String,
     val certificateTitle: String,
     val applicantName: String,

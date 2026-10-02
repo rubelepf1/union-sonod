@@ -20,12 +20,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -58,18 +60,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.GeneratedCertificate
+import com.example.data.model.SyncStatus
 import com.example.ui.components.UpBottomNav
 import com.example.ui.components.UpTopAppBar
 import com.example.ui.theme.BdGreenContainer
 import com.example.ui.theme.BdGreenDark
 import com.example.ui.theme.BdGreenPrimary
 import com.example.ui.theme.BdRedAccent
+import com.example.ui.theme.GoldAccent
 import com.example.ui.viewmodel.ScreenState
 import com.example.util.BanglaHelper
 
 @Composable
 fun HistoryScreen(
     certificates: List<GeneratedCertificate>,
+    pendingSyncCount: Int,
+    isSyncing: Boolean,
+    onTriggerSync: () -> Unit,
     onOpenPreview: (GeneratedCertificate) -> Unit,
     onDuplicate: (GeneratedCertificate) -> Unit,
     onDelete: (GeneratedCertificate) -> Unit,
@@ -125,7 +132,19 @@ fun HistoryScreen(
         topBar = {
             UpTopAppBar(
                 title = "আমার তৈরি সনদ",
-                subtitle = "মোট ${BanglaHelper.toBanglaDigits(certificates.size)} টি প্রস্তুতকৃত সনদ"
+                subtitle = "মোট ${BanglaHelper.toBanglaDigits(certificates.size)} টি প্রস্তুতকৃত সনদ",
+                actions = {
+                    IconButton(
+                        onClick = onTriggerSync,
+                        modifier = Modifier.testTag("history_sync_button")
+                    ) {
+                        Icon(
+                            imageVector = if (isSyncing) Icons.Default.Sync else Icons.Default.CloudSync,
+                            contentDescription = "ক্লাউড সিঙ্ক",
+                            tint = Color.White
+                        )
+                    }
+                }
             )
         },
         bottomBar = {
@@ -141,39 +160,62 @@ fun HistoryScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Search Input
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = {
-                    Text(
-                        text = "আবেদনকারীর নাম বা স্মারক নং দিয়ে খুঁজুন...",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = "খুঁজুন", tint = BdGreenPrimary)
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(imageVector = Icons.Default.Clear, contentDescription = "মুছুন")
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BdGreenPrimary,
-                    cursorColor = BdGreenPrimary,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface
-                ),
+            // Search Input & Sync Status Bar
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .testTag("history_search_input")
-            )
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text(
+                            text = "আবেদনকারীর নাম বা স্মারক নং...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Default.Search, contentDescription = "খুঁজুন", tint = BdGreenPrimary)
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(imageVector = Icons.Default.Clear, contentDescription = "মুছুন")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = BdGreenPrimary,
+                        cursorColor = BdGreenPrimary,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("history_search_input")
+                )
+
+                if (pendingSyncCount > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    OutlinedButton(
+                        onClick = onTriggerSync,
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${BanglaHelper.toBanglaDigits(pendingSyncCount)} সিঙ্ক",
+                            style = MaterialTheme.typography.labelSmall.copy(color = GoldAccent)
+                        )
+                    }
+                }
+            }
 
             if (filteredList.isEmpty()) {
                 Box(
@@ -274,9 +316,38 @@ fun HistoryCertificateItem(
 
                 Spacer(modifier = Modifier.weight(1f))
 
+                // Sync status indicator pill
+                val isSynced = cert.syncStatus == SyncStatus.SYNCED
+                Surface(
+                    color = if (isSynced) BdGreenPrimary.copy(alpha = 0.1f) else GoldAccent.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isSynced) Icons.Default.CloudDone else Icons.Default.CloudUpload,
+                            contentDescription = null,
+                            tint = if (isSynced) BdGreenPrimary else GoldAccent,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = if (isSynced) "ক্লাউড" else "লোকাল",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                color = if (isSynced) BdGreenPrimary else GoldAccent
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Text(
                     text = cert.issueDateBangla,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

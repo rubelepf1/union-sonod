@@ -5,13 +5,19 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
+import com.example.data.local.UserSessionManager
 import com.example.data.model.CertificateRegistry
 import com.example.data.model.CertificateType
 import com.example.data.model.GeneratedCertificate
 import com.example.data.model.Heir
+import com.example.data.model.SyncStatus
 import com.example.data.model.UnionProfile
+import com.example.data.model.UserProfile
+import com.example.data.remote.AuthResult
+import com.example.data.remote.SupabaseClient
 import com.example.data.repository.CertificateRepository
 import com.example.data.repository.UnionRepository
+import com.example.sync.SyncManager
 import com.example.util.BanglaHelper
 import com.example.util.PdfGenerator
 import com.example.util.TemplateEngine
@@ -24,6 +30,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 enum class ScreenState {
+    LOGIN,
     SPLASH_SETUP,
     HOME,
     FORM,
@@ -53,7 +60,12 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
 
     private val db = AppDatabase.getInstance(application)
     private val unionRepo = UnionRepository(db.unionProfileDao())
-    private val certRepo = CertificateRepository(db.certificateDao())
+    private val certRepo = CertificateRepository(db.certificateDao(), db.cachedCertificateTypeDao())
+    val sessionManager = UserSessionManager(application)
+    val supabase = SupabaseClient(sessionTokenProvider = { sessionManager.getAccessToken() })
+
+    val currentUser: StateFlow<UserProfile?> = sessionManager.currentUser
+    val isOfflineGuestMode: StateFlow<Boolean> = sessionManager.isOfflineGuestMode
 
     val unionProfile: StateFlow<UnionProfile?> = unionRepo.unionProfile
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -63,6 +75,12 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
 
     val totalCertificatesCount: StateFlow<Int> = certRepo.totalCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val pendingSyncCount: StateFlow<Int> = certRepo.pendingSyncCount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val dynamicCertificateTypes: StateFlow<List<CertificateType>> = certRepo.certificateTypes
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CertificateRegistry.ALL_TYPES)
 
     private val _currentScreen = MutableStateFlow(ScreenState.HOME)
     val currentScreen: StateFlow<ScreenState> = _currentScreen.asStateFlow()
@@ -90,14 +108,104 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
+    // Auth State
+    private val _isLoginLoading = MutableStateFlow(false)
+    val isLoginLoading: StateFlow<Boolean> = _isLoginLoading.asStateFlow()
+
+    private val _loginError = MutableStateFlow<String?>(null)
+    val loginError: StateFlow<String?> = _loginError.asStateFlow()
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+
     init {
+        // Schedule periodic sync via WorkManager
+        SyncManager.schedulePeriodicSync(application)
+
         viewModelScope.launch {
-            val profile = unionRepo.getProfileSync()
-            if (profile == null || !profile.isConfigured || profile.unionName.isBlank()) {
-                _currentScreen.value = ScreenState.SPLASH_SETUP
+            if (!sessionManager.isLoggedIn() && !sessionManager.isOfflineGuestMode.value) {
+                _currentScreen.value = ScreenState.LOGIN
+                _screenBackStack.value = listOf(ScreenState.LOGIN)
             } else {
-                _currentScreen.value = ScreenState.HOME
+                checkUnionSetup()
             }
+        }
+    }
+
+    private suspend fun checkUnionSetup() {
+        val profile = unionRepo.getProfileSync()
+        if (profile == null || !profile.isConfigured || profile.unionName.isBlank()) {
+            _currentScreen.value = ScreenState.SPLASH_SETUP
+            _screenBackStack.value = listOf(ScreenState.SPLASH_SETUP)
+        } else {
+            _currentScreen.value = ScreenState.HOME
+            _screenBackStack.value = listOf(ScreenState.HOME)
+        }
+    }
+
+    fun login(email: String, pass: String) {
+        viewModelScope.launch {
+            _isLoginLoading.value = true
+            _loginError.value = null
+
+            when (val result = supabase.login(email, pass)) {
+                is AuthResult.Success -> {
+                    sessionManager.saveSession(result.user)
+                    _statusMessage.value = "স্বাগতম, ${result.user.fullName} (${result.user.roleTitleBn})"
+                    _isLoginLoading.value = false
+
+                    // If user belongs to a union, sync union info
+                    result.user.unionId?.let { uId ->
+                        launch {
+                            val remoteUnion = supabase.fetchUnionProfile(uId)
+                            if (remoteUnion != null) {
+                                unionRepo.saveProfile(remoteUnion)
+                            }
+                        }
+                    }
+
+                    // Trigger immediate sync
+                    triggerManualSync()
+                    checkUnionSetup()
+                }
+                is AuthResult.InactiveAccount -> {
+                    _isLoginLoading.value = false
+                    _loginError.value = result.message
+                }
+                is AuthResult.Error -> {
+                    _isLoginLoading.value = false
+                    _loginError.value = result.message
+                }
+            }
+        }
+    }
+
+    fun continueAsOfflineGuest() {
+        sessionManager.setOfflineGuestMode(true)
+        viewModelScope.launch {
+            checkUnionSetup()
+        }
+    }
+
+    fun logout() {
+        sessionManager.clearSession()
+        _currentScreen.value = ScreenState.LOGIN
+        _screenBackStack.value = listOf(ScreenState.LOGIN)
+        _statusMessage.value = "সফলভাবে লগআউট করা হয়েছে"
+    }
+
+    fun triggerManualSync() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            SyncManager.triggerImmediateSync(getApplication())
+            // Pull remote certificate types
+            val types = supabase.fetchCertificateTypes()
+            if (types.isNotEmpty()) {
+                certRepo.saveCachedTypes(types)
+            }
+            kotlinx.coroutines.delay(1200)
+            _isSyncing.value = false
+            _statusMessage.value = "ক্লাউড সিঙ্ক সফলভাবে সম্পন্ন হয়েছে"
         }
     }
 
@@ -116,7 +224,7 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
             _screenBackStack.value = list
             _currentScreen.value = prev
             return true
-        } else if (_currentScreen.value != ScreenState.HOME) {
+        } else if (_currentScreen.value != ScreenState.HOME && _currentScreen.value != ScreenState.LOGIN) {
             _currentScreen.value = ScreenState.HOME
             _screenBackStack.value = listOf(ScreenState.HOME)
             return true
@@ -180,7 +288,8 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun duplicateCertificate(cert: GeneratedCertificate) {
-        val type = CertificateRegistry.findById(cert.certificateTypeId) ?: return
+        val type = dynamicCertificateTypes.value.find { it.id == cert.certificateTypeId }
+            ?: CertificateRegistry.findById(cert.certificateTypeId) ?: return
         _selectedType.value = type
         val customMap = BanglaHelper.parseCustomFieldsJson(cert.customFieldsJson)
         val heirsList = cert.heirsJson?.let { BanglaHelper.parseHeirsJson(it) } ?: emptyList()
@@ -215,11 +324,11 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
     fun deleteCertificate(cert: GeneratedCertificate) {
         viewModelScope.launch {
             certRepo.delete(cert.id)
+            SyncManager.triggerImmediateSync(getApplication())
             _statusMessage.value = "সনদটি মুছে ফেলা হয়েছে"
         }
     }
 
-    // Form inputs updating
     fun updateApplicantName(v: String) = updateFormField { it.copy(applicantName = v) }
     fun updateFatherOrHusbandName(v: String) = updateFormField { it.copy(fatherOrHusbandName = v) }
     fun updateMotherName(v: String) = updateFormField { it.copy(motherName = v) }
@@ -266,13 +375,11 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
 
         when (state.currentStep) {
             0 -> {
-                // Step 1: Personal info
                 if (state.applicantName.isBlank()) errors["applicantName"] = "আবেদনকারী / ব্যক্তির নাম আবশ্যক"
                 if (state.fatherOrHusbandName.isBlank()) errors["fatherOrHusbandName"] = "পিতা বা স্বামীর নাম আবশ্যক"
                 if (state.motherName.isBlank()) errors["motherName"] = "মাতার নাম আবশ্যক"
             }
             1 -> {
-                // Step 2: Address
                 if (state.village.isBlank()) errors["village"] = "গ্রাম বা মহল্লার নাম আবশ্যক"
                 if (state.wardNo.isBlank()) errors["wardNo"] = "ওয়ার্ড নং আবশ্যক"
                 if (state.postOffice.isBlank()) errors["postOffice"] = "ডাকঘরের নাম আবশ্যক"
@@ -280,7 +387,6 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
                 if (state.district.isBlank()) errors["district"] = "জেলার নাম আবশ্যক"
             }
             2 -> {
-                // Step 3: Certificate specific fields
                 for (field in type.specificFields) {
                     if (field.required) {
                         val v = state.customFields[field.key] ?: ""
@@ -306,7 +412,6 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
             _formState.value = state.copy(currentStep = state.currentStep + 1, errors = emptyMap())
             return true
         } else {
-            // Final submission -> generate certificate & go to preview
             submitAndGenerateCertificate()
             return true
         }
@@ -341,8 +446,12 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
                 customValues = state.customFields
             )
 
-            val totalCount = certRepo.totalCount.let { totalCertificatesCount.value }
-            val serialNo = BanglaHelper.generateReferenceNumber((totalCount + 1).toLong())
+            // Fetch serial number from Supabase RPC generate_certificate_serial_no
+            val user = sessionManager.currentUser.value
+            val targetUnionId = user?.unionId ?: "00000000-0000-0000-0000-000000000001"
+            val serverSerial = supabase.generateServerSerialNo(targetUnionId)
+            val serialNo = serverSerial ?: BanglaHelper.generateReferenceNumber((totalCertificatesCount.value + 1).toLong())
+
             val issueDate = BanglaHelper.getCurrentDateBangla()
 
             val entity = GeneratedCertificate(
@@ -364,11 +473,17 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
                 heirsJson = heirsJson,
                 generatedBodyText = bodyText,
                 unionName = profile.unionName,
-                chairmanName = profile.chairmanName
+                chairmanName = profile.chairmanName,
+                syncStatus = SyncStatus.PENDING_INSERT,
+                unionRemoteId = user?.unionId,
+                createdByRemoteId = user?.id
             )
 
             val newId = certRepo.insert(entity)
             val savedCert = entity.copy(id = newId)
+
+            // Trigger sync in background
+            SyncManager.triggerImmediateSync(getApplication())
 
             val pdf = PdfGenerator.generateCertificatePdf(getApplication(), savedCert)
             _generatedPdfFile.value = pdf

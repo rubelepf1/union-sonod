@@ -1,13 +1,11 @@
 package com.example
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -21,6 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.screens.FormScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.PreviewScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SetupScreen
@@ -44,9 +43,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun UpSonodApp(viewModel: UpSonodViewModel) {
     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val isOfflineGuest by viewModel.isOfflineGuestMode.collectAsStateWithLifecycle()
     val unionProfile by viewModel.unionProfile.collectAsStateWithLifecycle()
     val certificatesList by viewModel.certificatesList.collectAsStateWithLifecycle()
     val totalCount by viewModel.totalCertificatesCount.collectAsStateWithLifecycle()
+    val pendingSyncCount by viewModel.pendingSyncCount.collectAsStateWithLifecycle()
+    val dynamicTypes by viewModel.dynamicCertificateTypes.collectAsStateWithLifecycle()
     val selectedType by viewModel.selectedType.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val previewCert by viewModel.previewCertificate.collectAsStateWithLifecycle()
@@ -54,6 +57,10 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
+
+    val isLoginLoading by viewModel.isLoginLoading.collectAsStateWithLifecycle()
+    val loginError by viewModel.loginError.collectAsStateWithLifecycle()
+    val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -65,7 +72,7 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
     }
 
     // Custom back navigation handling
-    BackHandler(enabled = currentScreen != ScreenState.HOME && currentScreen != ScreenState.SPLASH_SETUP) {
+    BackHandler(enabled = currentScreen != ScreenState.HOME && currentScreen != ScreenState.LOGIN) {
         viewModel.navigateBack()
     }
 
@@ -74,6 +81,19 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
         modifier = Modifier.fillMaxSize()
     ) { _ ->
         when (currentScreen) {
+            ScreenState.LOGIN -> {
+                LoginScreen(
+                    isSupabaseConfigured = viewModel.supabase.isConfigured,
+                    isLoading = isLoginLoading,
+                    errorMessage = loginError,
+                    onLoginSubmit = { email, pass ->
+                        viewModel.login(email, pass)
+                    },
+                    onContinueOffline = {
+                        viewModel.continueAsOfflineGuest()
+                    }
+                )
+            }
             ScreenState.SPLASH_SETUP -> {
                 SetupScreen(
                     onSetupComplete = { name, upazila, district, chairman, email, phone, logo ->
@@ -84,6 +104,10 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
             ScreenState.HOME -> {
                 HomeScreen(
                     unionProfile = unionProfile,
+                    currentUser = currentUser,
+                    certificateTypes = dynamicTypes,
+                    pendingSyncCount = pendingSyncCount,
+                    isSyncing = isSyncing,
                     totalCertificatesCount = totalCount,
                     searchQuery = searchQuery,
                     selectedCategory = selectedCategory,
@@ -91,6 +115,9 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
                     onCategoryChange = { viewModel.setSelectedCategory(it) },
                     onSelectCertificate = { type ->
                         viewModel.startCertificateForm(type)
+                    },
+                    onTriggerSync = {
+                        viewModel.triggerManualSync()
                     },
                     onNavigate = { screen ->
                         viewModel.navigateTo(screen)
@@ -135,6 +162,11 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
             ScreenState.HISTORY -> {
                 HistoryScreen(
                     certificates = certificatesList,
+                    pendingSyncCount = pendingSyncCount,
+                    isSyncing = isSyncing,
+                    onTriggerSync = {
+                        viewModel.triggerManualSync()
+                    },
                     onOpenPreview = { cert ->
                         viewModel.openExistingPreview(cert)
                     },
@@ -152,6 +184,19 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
             ScreenState.SETTINGS -> {
                 SettingsScreen(
                     unionProfile = unionProfile,
+                    currentUser = currentUser,
+                    isOfflineGuestMode = isOfflineGuest,
+                    pendingSyncCount = pendingSyncCount,
+                    isSyncing = isSyncing,
+                    onTriggerSync = {
+                        viewModel.triggerManualSync()
+                    },
+                    onLogout = {
+                        viewModel.logout()
+                    },
+                    onGoToLogin = {
+                        viewModel.navigateTo(ScreenState.LOGIN)
+                    },
                     onSaveProfile = { name, upazila, district, chairman, email, phone, logo ->
                         viewModel.saveUnionProfile(name, upazila, district, chairman, email, phone, logo)
                     },
