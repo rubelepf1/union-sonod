@@ -1,0 +1,6 @@
+{
+  "name": "ইউপি সনদ",
+  "description": "বাংলাদেশ ইউনিয়ন পরিষদ নাগরিক সনদ, চারিত্রিক, ওয়ারিশান ও বিভিন্ন প্রত্যয়নপত্র তৈরির পূর্ণাঙ্গ অফলাইন সিস্টেম",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

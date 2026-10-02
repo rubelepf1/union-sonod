@@ -1,0 +1,436 @@
+package com.example.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.CardMembership
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FamilyRestroom
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.LocationCity
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.data.model.CertificateRegistry
+import com.example.data.model.CertificateType
+import com.example.data.model.UnionProfile
+import com.example.ui.components.UpBottomNav
+import com.example.ui.components.UpTopAppBar
+import com.example.ui.theme.BdGreenContainer
+import com.example.ui.theme.BdGreenDark
+import com.example.ui.theme.BdGreenPrimary
+import com.example.ui.theme.BdRedAccent
+import com.example.ui.theme.GoldAccent
+import com.example.ui.viewmodel.ScreenState
+import com.example.util.BanglaHelper
+
+@Composable
+fun HomeScreen(
+    unionProfile: UnionProfile?,
+    totalCertificatesCount: Int,
+    searchQuery: String,
+    selectedCategory: String,
+    onSearchChange: (String) -> Unit,
+    onCategoryChange: (String) -> Unit,
+    onSelectCertificate: (CertificateType) -> Unit,
+    onNavigate: (ScreenState) -> Unit
+) {
+    val categories = listOf("সকল", "নাগরিক সেবা", "উত্তরাধিকার", "আর্থিক সেবা", "সামাজিক সুরক্ষা", "বিশেষ প্রত্যয়ন", "বাণিজ্যিক সেবা")
+
+    val filteredList = CertificateRegistry.ALL_TYPES.filter { cert ->
+        val matchesCategory = selectedCategory == "সকল" || cert.category == selectedCategory
+        val matchesSearch = searchQuery.isBlank() ||
+                cert.title.contains(searchQuery, ignoreCase = true) ||
+                cert.englishName.contains(searchQuery, ignoreCase = true) ||
+                cert.description.contains(searchQuery, ignoreCase = true)
+        matchesCategory && matchesSearch
+    }
+
+    Scaffold(
+        topBar = {
+            UpTopAppBar(
+                title = unionProfile?.unionName?.ifBlank { "ইউনিয়ন পরিষদ" } ?: "ইউপি সনদ",
+                subtitle = "উপজেলা: ${unionProfile?.upazila ?: ""}, জেলা: ${unionProfile?.district ?: ""}"
+            )
+        },
+        bottomBar = {
+            UpBottomNav(
+                currentScreen = ScreenState.HOME,
+                onNavigate = onNavigate
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 320.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
+                bottom = innerPadding.calculateBottomPadding() + 16.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Header Stats Banner
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                HomeBanner(
+                    unionProfile = unionProfile,
+                    totalCount = totalCertificatesCount
+                )
+            }
+
+            // Search Bar
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchChange,
+                    placeholder = {
+                        Text(
+                            text = "সনদ খুঁজুন (যেমন: নাগরিকত্ব, ওয়ারিশান, মৃত্যু...)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "খুঁজুন",
+                            tint = BdGreenPrimary
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { onSearchChange("") }) {
+                                Icon(imageVector = Icons.Default.Clear, contentDescription = "মুছুন")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = BdGreenPrimary,
+                        cursorColor = BdGreenPrimary,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("home_search_input")
+                )
+            }
+
+            // Category Chips
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(categories) { cat ->
+                        val isSelected = selectedCategory == cat
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onCategoryChange(cat) },
+                            label = {
+                                Text(
+                                    text = cat,
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = BdGreenPrimary,
+                                selectedLabelColor = Color.White,
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.testTag("category_chip_$cat")
+                        )
+                    }
+                }
+            }
+
+            // Title indicator
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "সনদের তালিকা (${BanglaHelper.toBanglaDigits(filteredList.size)} টি প্রাপ্ত)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            // Cards Grid
+            if (filteredList.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(54.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "কোনো সনদ পাওয়া যায়নি",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(filteredList, key = { it.id }) { cert ->
+                    CertificateCard(
+                        cert = cert,
+                        onClick = { onSelectCertificate(cert) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeBanner(
+    unionProfile: UnionProfile?,
+    totalCount: Int
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = BdGreenPrimary
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Surface(
+                    color = Color.White.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        text = "অফলাইন ডিজিটাল সেবা",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "চেয়ারম্যান: ${unionProfile?.chairmanName?.ifBlank { "চেয়ারম্যান" } ?: "চেয়ারম্যান"}",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "সহজে ফরম পূরণ করে নিখুঁত A4 প্রত্যয়নপত্র প্রিন্ট নিন",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Total generated stat
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = BanglaHelper.toBanglaDigits(totalCount),
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White
+                )
+                Text(
+                    text = "তৈরি সনদ",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CertificateCard(
+    cert: CertificateType,
+    onClick: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(1.5.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .testTag("cert_card_${cert.id}")
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(BdGreenContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = getIconForCategory(cert.category),
+                        contentDescription = cert.title,
+                        tint = BdGreenDark,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = cert.title,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = cert.englishName,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Category Tag
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        text = cert.category,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = cert.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "সনদ তৈরি করুন",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = BdGreenPrimary
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "তৈরি",
+                    tint = BdGreenPrimary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+fun getIconForCategory(category: String): ImageVector {
+    return when (category) {
+        "নাগরিক সেবা" -> Icons.Default.VerifiedUser
+        "উত্তরাধিকার" -> Icons.Default.FamilyRestroom
+        "আর্থিক সেবা" -> Icons.Default.MonetizationOn
+        "সামাজিক সুরক্ষা" -> Icons.Default.Favorite
+        "বাণিজ্যিক সেবা" -> Icons.Default.Business
+        "বিশেষ প্রত্যয়ন" -> Icons.Default.CardMembership
+        else -> Icons.Default.Description
+    }
+}
