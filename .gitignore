@@ -54,6 +54,8 @@ Thumbs.db
 
 # Secrets & Local Keystores
 .env
+.env.local
+*.local
 debug.keystore
 debug.keystore.base64
 my-upload-key.jks
