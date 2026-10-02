@@ -254,8 +254,8 @@ object PdfGenerator {
             curY = drawHeirsTable(canvas, heirs, margin + 18f, curY, textWidth.toFloat(), notoBengali)
         }
 
-        // 7. Official Bottom Footer Section (Chairman signature, Seal, Ward Member)
-        drawBottomSignaturesAndSeal(canvas, cert, margin, width, height, notoBengali)
+        // 7. Official Bottom Footer Section (Chairman signature, Ward Member)
+        drawBottomSignatures(canvas, cert, margin, width, height, notoBengali)
     }
 
     private fun drawCornerDecorations(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float) {
@@ -462,7 +462,7 @@ object PdfGenerator {
         return curY + 10f
     }
 
-    private fun drawBottomSignaturesAndSeal(
+    private fun drawBottomSignatures(
         canvas: Canvas,
         cert: GeneratedCertificate,
         margin: Float,
@@ -494,36 +494,12 @@ object PdfGenerator {
 
         // 1. Left side: Ward Member
         val leftX = margin + 20f
-        val sigLineLength = 120f
+        val sigLineLength = 130f
         canvas.drawLine(leftX, footerBaseY - 32f, leftX + sigLineLength, footerBaseY - 32f, linePaint)
-        canvas.drawText("সত্যায়নকারী ইউপি সদস্য", leftX + 4f, footerBaseY - 18f, boldPaint)
-        canvas.drawText("স্বাক্ষর ও সীলমোহর", leftX + 16f, footerBaseY - 4f, textPaint)
+        canvas.drawText("সত্যায়নকারী ইউপি সদস্য", leftX + 8f, footerBaseY - 18f, boldPaint)
+        canvas.drawText("স্বাক্ষর", leftX + 46f, footerBaseY - 4f, textPaint)
 
-        // 2. Center: Official Seal Circle Placeholder
-        val sealCenterX = width / 2f
-        val sealCenterY = footerBaseY - 24f
-        val sealRadius = 32f
-
-        val sealPaint = Paint().apply {
-            color = Color.rgb(180, 70, 70) // Soft maroon/red seal ring
-            style = Paint.Style.STROKE
-            strokeWidth = 1.2f
-            pathEffect = DashPathEffect(floatArrayOf(5f, 3f), 0f)
-            isAntiAlias = true
-        }
-        canvas.drawCircle(sealCenterX, sealCenterY, sealRadius, sealPaint)
-
-        val sealTextPaint = Paint().apply {
-            color = Color.rgb(160, 60, 60)
-            textSize = 8.5f
-            textAlign = Paint.Align.CENTER
-            this.typeface = typeface
-            isAntiAlias = true
-        }
-        canvas.drawText("ইউনিয়ন পরিষদ", sealCenterX, sealCenterY - 4f, sealTextPaint)
-        canvas.drawText("গোল সীলমোহর", sealCenterX, sealCenterY + 8f, sealTextPaint)
-
-        // 3. Right side: Chairman signature & title
+        // 2. Right side: Chairman signature & title (aligned to the right)
         val rightX = width - margin - 20f
         val rightTextPaint = Paint().apply {
             color = Color.BLACK

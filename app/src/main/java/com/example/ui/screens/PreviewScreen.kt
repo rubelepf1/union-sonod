@@ -366,72 +366,52 @@ fun A4CertificateContent(certificate: GeneratedCertificate) {
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // Footer Section: Member sig, Seal circle, Chairman sig
+        // Footer Section: Member sig on left, Chairman sig on right
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
             // Left: Member
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(modifier = Modifier.width(100.dp).height(1.dp).background(Color.DarkGray))
+                Box(modifier = Modifier.width(120.dp).height(1.dp).background(Color.DarkGray))
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "সত্যায়নকারী ইউপি সদস্য",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.5.sp, fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
                     color = Color.Black
                 )
                 Text(
-                    text = "স্বাক্ষর ও সীলমোহর",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.5.sp),
+                    text = "স্বাক্ষর",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                     color = Color.DarkGray
                 )
             }
 
-            // Middle: Seal Circle
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, Color(0xFFB44646), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "ইউনিয়ন পরিষদ",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
-                        color = Color(0xFFA03C3C)
-                    )
-                    Text(
-                        text = "গোল সীলমোহর",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
-                        color = Color(0xFFA03C3C)
-                    )
-                }
-            }
-
-            // Right: Chairman
+            // Right: Chairman signature block
             Column(horizontalAlignment = Alignment.End) {
-                Box(modifier = Modifier.width(110.dp).height(1.dp).background(Color.DarkGray))
+                Box(modifier = Modifier.width(135.dp).height(1.dp).background(Color.DarkGray))
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = certificate.chairmanName,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.5.sp, fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
                     color = Color.Black
                 )
                 Text(
                     text = "চেয়ারম্যান",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.5.sp, fontWeight = FontWeight.Bold),
                     color = Color.Black
                 )
                 Text(
                     text = certificate.unionName,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.5.sp),
                     color = Color.DarkGray
                 )
                 Text(
                     text = "${certificate.upazila}, ${certificate.district}",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.5.sp),
                     color = Color.DarkGray
                 )
             }

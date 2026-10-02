@@ -773,7 +773,7 @@ fun StepReview(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "উপরে বর্ণিত সকল তথ্য সঠিক ও সত্য। সনদ প্রস্তুতের পর আপনি সরাসরি A4 সাইজে প্রিন্ট নিতে পারবেন এবং সংশ্লিষ্ট ইউনিয়ন পরিষদ চেয়ারম্যানের সীল ও স্বাক্ষর গ্রহণ করতে পারবেন।",
+                text = "উপরে বর্ণিত সকল তথ্য সঠিক ও সত্য। সনদ প্রস্তুতের পর আপনি সরাসরি A4 সাইজে প্রিন্ট নিতে পারবেন এবং সংশ্লিষ্ট ইউনিয়ন পরিষদ চেয়ারম্যানের স্বাক্ষর গ্রহণ করতে পারবেন।",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp)

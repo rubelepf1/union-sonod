@@ -1,0 +1,72 @@
+name: Build Signed Release APK & Bundle (AAB)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-release:
+    name: Build Signed Release (APK & AAB)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x gradlew
+
+      - name: Create .env Configuration
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "SUPABASE_URL=${SUPABASE_URL}" > .env
+          echo "SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}" >> .env
+
+      - name: Decode Release Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::KEYSTORE_BASE64 secret is not defined or empty!"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "${{ github.workspace }}/release.keystore"
+
+      - name: Build Release APK and AAB
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/release.keystore
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          ./gradlew assembleRelease bundleRelease --stacktrace
+
+      - name: Clean up Keystore File
+        if: always()
+        run: |
+          rm -f "${{ github.workspace }}/release.keystore"
+
+      - name: Upload Release APK (Direct Install)
+        uses: actions/upload-artifact@v4
+        with:
+          name: UP-Sonod-release-apk-v${{ github.run_number }}
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 60
+
+      - name: Upload Release AAB (Play Store Bundle)
+        uses: actions/upload-artifact@v4
+        with:
+          name: UP-Sonod-release-aab-v${{ github.run_number }}
+          path: app/build/outputs/bundle/release/*.aab
+          retention-days: 60

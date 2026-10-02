@@ -326,7 +326,7 @@ fun SettingsScreen(
 
                     // Logo selector
                     Text(
-                        text = "ইউনিয়ন পরিষদ সিল / লোগো",
+                        text = "ইউনিয়ন পরিষদ লোগো",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
                     )
                     Spacer(modifier = Modifier.height(6.dp))
@@ -363,7 +363,7 @@ fun SettingsScreen(
                             Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = null, tint = BdGreenPrimary)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "লোগো বা সিল যুক্ত করতে ট্যাপ করুন",
+                                text = "লোগো যুক্ত করতে ট্যাপ করুন",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -426,7 +426,7 @@ fun SettingsScreen(
                     InstructionItem("১", "নাগরিকের সঠিক তথ্য ও ঠিকানার বিবরণ দিয়ে ফরমটি পূরণ করুন।")
                     InstructionItem("২", "প্রিভিউ স্ক্রিনে দেখে নিন সনদটি নিখুঁত A4 আকারে সজ্জিত হয়েছে।")
                     InstructionItem("৩", "সরাসরি প্রিন্টার দিয়ে প্রিন্ট করুন অথবা PDF আকারে সংরক্ষণ করে প্রিন্ট করান।")
-                    InstructionItem("৪", "প্রিন্টআউট কপি নিয়ে ইউনিয়ন পরিষদ চেয়ারম্যানের নিকট থেকে স্বাক্ষর ও গোল সিলমোহর গ্রহণ করুন।")
+                    InstructionItem("৪", "প্রিন্টআউট কপি নিয়ে ইউনিয়ন পরিষদ চেয়ারম্যানের নিকট থেকে স্বাক্ষর গ্রহণ করুন।")
                     InstructionItem("৫", "ইন্টারনেট থাকলে সনদ স্বয়ংক্রিয়ভাবে Supabase ক্লাউডে ব্যাকআপ থাকবে; ইন্টারনেট না থাকলেও অফলাইনে পূর্ণাঙ্গ সনদ তৈরি হবে।")
 
                     Spacer(modifier = Modifier.height(14.dp))

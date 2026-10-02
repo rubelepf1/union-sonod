@@ -292,7 +292,7 @@ fun SetupScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "ইউনিয়ন পরিষদ লোগো বা সিল আপলোড করতে ট্যাপ করুন",
+                                text = "ইউনিয়ন পরিষদ লোগো আপলোড করতে ট্যাপ করুন",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

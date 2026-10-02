@@ -56,6 +56,9 @@ Thumbs.db
 .env
 .env.local
 *.local
+*.jks
+*.keystore
 debug.keystore
 debug.keystore.base64
 my-upload-key.jks
+release.keystore
