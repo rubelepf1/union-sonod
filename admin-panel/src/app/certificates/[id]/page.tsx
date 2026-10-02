@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AdminLayout } from '@/components/AdminLayout';
-import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { Certificate, CertificateStatus } from '@/lib/types';
-import { toBanglaNumber, formatBanglaDate, formatBanglaDateTime } from '@/lib/bangla';
+import { toBanglaNumber, formatBanglaDateTime } from '@/lib/bangla';
 import { StatusBadge } from '@/components/StatusBadge';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import {
@@ -16,7 +15,6 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
-  Printer,
   Calendar,
   User,
   Hash,
@@ -27,7 +25,6 @@ export default function CertificateDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
-  const { profile } = useAuth();
 
   const [cert, setCert] = useState<Certificate | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +33,7 @@ export default function CertificateDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const fetchCertificateDetail = async () => {
+  const fetchCertificateDetail = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     try {
@@ -56,11 +53,11 @@ export default function CertificateDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchCertificateDetail();
-  }, [id]);
+  }, [fetchCertificateDetail]);
 
   const handleStatusChange = async (newStatus: CertificateStatus) => {
     if (!cert) return;

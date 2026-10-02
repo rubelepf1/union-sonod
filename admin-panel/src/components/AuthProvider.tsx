@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const router = useRouter();
   const pathname = usePathname();
 
-  const fetchProfileAndUnion = async (userId: string): Promise<boolean> => {
+  const fetchProfileAndUnion = useCallback(async (userId: string): Promise<boolean> => {
     try {
       const { data: profileData, error: profileErr } = await supabase
         .from('profiles')
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error fetching user profile:', err);
       return false;
     }
-  };
+  }, [router]);
 
   const refreshProfile = async () => {
     if (user?.id) {
@@ -146,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [pathname, router]);
+  }, [pathname, router, fetchProfileAndUnion]);
 
   const signOut = async () => {
     await supabase.auth.signOut();

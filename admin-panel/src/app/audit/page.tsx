@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
@@ -9,15 +9,10 @@ import { toBanglaNumber, formatBanglaDateTime } from '@/lib/bangla';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import {
-  ShieldAlert,
   ChevronDown,
   ChevronRight,
-  Filter,
   RefreshCw,
   ChevronLeft,
-  User,
-  Calendar,
-  Layers,
 } from 'lucide-react';
 
 export default function AuditPage() {
@@ -56,7 +51,7 @@ export default function AuditPage() {
     loadMeta();
   }, [profile]);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
     try {
@@ -96,11 +91,11 @@ export default function AuditPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile, selectedUser, selectedEntity, selectedAction, selectedDate]);
 
   useEffect(() => {
     fetchLogs();
-  }, [profile, selectedUser, selectedEntity, selectedAction, selectedDate]);
+  }, [fetchLogs]);
 
   // Pagination
   const totalPages = Math.ceil(logs.length / pageSize) || 1;

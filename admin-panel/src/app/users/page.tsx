@@ -1,18 +1,16 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { Profile, UserRole } from '@/lib/types';
-import { toBanglaNumber, formatBanglaDate, getRoleMeta } from '@/lib/bangla';
+import { toBanglaNumber, formatBanglaDate } from '@/lib/bangla';
 import { RoleBadge } from '@/components/RoleBadge';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import {
-  Users,
   Info,
-  ShieldCheck,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -26,7 +24,7 @@ export default function UsersPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
     try {
@@ -46,11 +44,11 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile]);
 
   useEffect(() => {
     fetchUsers();
-  }, [profile]);
+  }, [fetchUsers]);
 
   // Toggle active status
   const handleToggleActive = async (targetUser: Profile) => {

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { AdminLayout } from '@/components/AdminLayout';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
@@ -11,17 +10,12 @@ import { toBanglaNumber } from '@/lib/bangla';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import {
-  ScrollText,
   Edit3,
-  CheckCircle,
-  XCircle,
   Eye,
   Shield,
-  Layers,
 } from 'lucide-react';
 
 export default function TemplatesPage() {
-  const router = useRouter();
   const { profile } = useAuth();
   const [types, setTypes] = useState<CertificateType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,8 +132,8 @@ export default function TemplatesPage() {
                   </div>
 
                   <h3 className="font-bold text-base text-slate-800 mb-1">{typeItem.title_bn}</h3>
-                  {typeItem.englishName && (
-                    <p className="text-xs text-slate-400 font-mono mb-3">{typeItem.englishName}</p>
+                  {typeItem.english_name && (
+                    <p className="text-xs text-slate-400 font-mono mb-3">{typeItem.english_name}</p>
                   )}
 
                   <p className="text-xs text-slate-500 line-clamp-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 font-serif leading-relaxed mb-4">

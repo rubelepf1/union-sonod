@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AdminLayout } from '@/components/AdminLayout';
 import { useAuth } from '@/components/AuthProvider';
@@ -37,7 +37,6 @@ const sampleData: Record<string, string> = {
 
 export default function TemplateEditPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params?.id as string;
   const { profile } = useAuth();
 

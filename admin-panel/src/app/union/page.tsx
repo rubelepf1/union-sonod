@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function UnionPage() {
-  const { profile, union: currentUnion, refreshProfile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [union, setUnion] = useState<Union | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

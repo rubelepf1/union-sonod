@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '@/components/AdminLayout';
@@ -12,7 +12,6 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { EmptyState } from '@/components/EmptyState';
 import {
   Search,
-  Filter,
   Download,
   Eye,
   Trash2,
@@ -70,7 +69,7 @@ export default function CertificatesPage() {
   }, [profile]);
 
   // Fetch certificates
-  const fetchCertificates = async () => {
+  const fetchCertificates = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
 
@@ -123,11 +122,11 @@ export default function CertificatesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile, showDeleted, selectedType, selectedStatus, selectedUser, startDate, endDate]);
 
   useEffect(() => {
     fetchCertificates();
-  }, [profile, selectedType, selectedStatus, selectedUser, startDate, endDate, showDeleted]);
+  }, [fetchCertificates]);
 
   // Client-side search by applicant name or serial_no
   const filteredCertificates = useMemo(() => {

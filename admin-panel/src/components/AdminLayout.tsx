@@ -53,7 +53,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
         <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive = pathname === item.href || (pathname ? pathname.startsWith(`${item.href}/`) : false);
             return (
               <Link
                 key={item.href}
@@ -171,7 +171,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 h-16 flex items-center justify-around px-2 z-30 shadow-lg">
         {navItems.slice(0, 5).map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+          const isActive = pathname === item.href || (pathname && item.href !== '/dashboard' ? pathname.startsWith(item.href) : false);
           return (
             <Link
               key={item.href}
