@@ -27,10 +27,13 @@ jobs:
       - name: Make Gradle Wrapper Executable
         run: chmod +x gradlew
 
-      - name: Prepare Local Environment and Keystore
+      - name: Create .env file
         run: |
-          # Create placeholder .env if missing to satisfy Secrets Gradle Plugin
-          touch .env
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+
+      - name: Prepare Keystore
+        run: |
           # Generate standard debug keystore if not present in repo
           if [ ! -f debug.keystore ]; then
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
