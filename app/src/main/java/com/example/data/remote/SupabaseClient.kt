@@ -297,6 +297,23 @@ class SupabaseClient(private val sessionTokenProvider: () -> String?) {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     Log.e("SupabaseClient", "Upload cert failed: ${response.code}")
+                    // Conflict Resolution: If 409 Conflict (e.g. duplicate serial_no), find existing record by serial_no and patch it
+                    if (response.code == 409 || response.code == 400) {
+                        val existingRemoteId = findCertificateIdBySerialNo(cert.serialNo, unionId)
+                        if (!existingRemoteId.isNullOrBlank()) {
+                            val patchUrl = "$baseUrl/rest/v1/certificates?id=eq.$existingRemoteId"
+                            val patchReq = newRequestBuilder(authenticated = true)
+                                .url(patchUrl)
+                                .header("Prefer", "return=representation")
+                                .patch(payload.toString().toRequestBody(jsonMediaType))
+                                .build()
+                            client.newCall(patchReq).execute().use { patchResp ->
+                                if (patchResp.isSuccessful) {
+                                    return@withContext existingRemoteId
+                                }
+                            }
+                        }
+                    }
                     return@withContext null
                 }
                 val respStr = response.body?.string() ?: ""
@@ -309,6 +326,23 @@ class SupabaseClient(private val sessionTokenProvider: () -> String?) {
             }
         } catch (e: Exception) {
             Log.e("SupabaseClient", "Upload cert error", e)
+            null
+        }
+    }
+
+    suspend fun findCertificateIdBySerialNo(serialNo: String, unionId: String): String? = withContext(Dispatchers.IO) {
+        if (!isConfigured) return@withContext null
+        try {
+            val url = "$baseUrl/rest/v1/certificates?serial_no=eq.$serialNo&union_id=eq.$unionId&select=id"
+            val request = newRequestBuilder(authenticated = true).url(url).get().build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext null
+                val array = JSONArray(response.body?.string() ?: "[]")
+                if (array.length() > 0) {
+                    array.getJSONObject(0).getString("id")
+                } else null
+            }
+        } catch (_: Exception) {
             null
         }
     }

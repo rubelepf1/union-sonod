@@ -20,10 +20,13 @@ interface CertificateDao {
     @Query("SELECT * FROM generated_certificates WHERE remoteId = :remoteId LIMIT 1")
     suspend fun getCertificateByRemoteId(remoteId: String): GeneratedCertificate?
 
-    @Query("SELECT * FROM generated_certificates WHERE syncStatus != '${SyncStatus.SYNCED}'")
+    @Query("SELECT * FROM generated_certificates WHERE serialNo = :serialNo LIMIT 1")
+    suspend fun getCertificateBySerialNo(serialNo: String): GeneratedCertificate?
+
+    @Query("SELECT * FROM generated_certificates WHERE syncStatus = '${SyncStatus.PENDING_DELETE}' OR (syncStatus IN ('${SyncStatus.PENDING_INSERT}', '${SyncStatus.PENDING_UPDATE}', '${SyncStatus.FAILED}') AND isDeleted = 0)")
     suspend fun getPendingSyncCertificates(): List<GeneratedCertificate>
 
-    @Query("SELECT COUNT(*) FROM generated_certificates WHERE syncStatus != '${SyncStatus.SYNCED}' AND isDeleted = 0")
+    @Query("SELECT COUNT(*) FROM generated_certificates WHERE syncStatus IN ('${SyncStatus.PENDING_INSERT}', '${SyncStatus.PENDING_UPDATE}', '${SyncStatus.PENDING_DELETE}', '${SyncStatus.FAILED}') AND isDeleted = 0")
     fun getPendingSyncCount(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -43,6 +46,12 @@ interface CertificateDao {
 
     @Query("UPDATE generated_certificates SET syncStatus = :newStatus, remoteId = :remoteId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, remoteId: String, newStatus: String)
+
+    @Query("UPDATE generated_certificates SET syncStatus = :newStatus WHERE id = :id")
+    suspend fun updateSyncStatusOnly(id: Long, newStatus: String)
+
+    @Query("UPDATE generated_certificates SET syncStatus = '${SyncStatus.FAILED}' WHERE id = :id")
+    suspend fun markFailed(id: Long)
 
     @Query("SELECT COUNT(*) FROM generated_certificates WHERE isDeleted = 0")
     fun getCertificateCount(): Flow<Int>

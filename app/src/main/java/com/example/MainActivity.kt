@@ -26,11 +26,13 @@ import com.example.ui.screens.SetupScreen
 import com.example.ui.theme.UpSonodTheme
 import com.example.ui.viewmodel.ScreenState
 import com.example.ui.viewmodel.UpSonodViewModel
+import com.example.sync.SyncManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        SyncManager.init(this)
         setContent {
             UpSonodTheme {
                 val viewModel: UpSonodViewModel = viewModel()
@@ -107,6 +109,7 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
                     unionProfile = unionProfile,
                     currentUser = currentUser,
                     certificateTypes = dynamicTypes,
+                    recentCertificates = certificatesList.take(3),
                     pendingSyncCount = pendingSyncCount,
                     isSyncing = isSyncing,
                     totalCertificatesCount = totalCount,
@@ -116,6 +119,12 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
                     onCategoryChange = { viewModel.setSelectedCategory(it) },
                     onSelectCertificate = { type ->
                         viewModel.startCertificateForm(type)
+                    },
+                    onOpenCertificate = { cert ->
+                        viewModel.openExistingPreview(cert)
+                    },
+                    onRetrySync = { cert ->
+                        viewModel.retryCertificateSync(cert)
                     },
                     onTriggerSync = {
                         viewModel.triggerManualSync()
@@ -145,6 +154,7 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
                     onRemoveHeir = { idx -> viewModel.removeHeir(idx) },
                     onNextStep = { viewModel.goToNextStep() },
                     onPreviousStep = { viewModel.goToPreviousStep() },
+                    onSaveDraft = { viewModel.saveDraft() },
                     onBackToHome = { viewModel.navigateTo(ScreenState.HOME) }
                 )
             }
@@ -171,6 +181,9 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
                     isSyncing = isSyncing,
                     onTriggerSync = {
                         viewModel.triggerManualSync()
+                    },
+                    onRetrySync = { cert ->
+                        viewModel.retryCertificateSync(cert)
                     },
                     onOpenPreview = { cert ->
                         viewModel.openExistingPreview(cert)

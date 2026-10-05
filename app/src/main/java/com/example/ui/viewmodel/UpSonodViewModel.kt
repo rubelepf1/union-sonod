@@ -215,6 +215,14 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun retryCertificateSync(cert: GeneratedCertificate) {
+        viewModelScope.launch {
+            certRepo.updateSyncStatusOnly(cert.id, SyncStatus.PENDING_INSERT)
+            _statusMessage.value = "সনদটি পুনরায় সিঙ্ক করা হচ্ছে..."
+            triggerManualSync()
+        }
+    }
+
     fun navigateTo(screen: ScreenState) {
         val updated = _screenBackStack.value.toMutableList()
         updated.add(screen)
@@ -404,8 +412,6 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
                 if (state.postOffice.isBlank()) errors["postOffice"] = "ডাকঘরের নাম আবশ্যক"
                 if (state.upazila.isBlank()) errors["upazila"] = "উপজেলার নাম আবশ্যক"
                 if (state.district.isBlank()) errors["district"] = "জেলার নাম আবশ্যক"
-            }
-            2 -> {
                 for (field in type.specificFields) {
                     if (field.required) {
                         val v = state.customFields[field.key] ?: ""
@@ -414,6 +420,8 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
                         }
                     }
                 }
+            }
+            2 -> {
                 if (type.isSuccession) {
                     if (state.heirs.isEmpty() || state.heirs.all { it.name.isBlank() }) {
                         errors["heirs"] = "কমপক্ষে একজন ওয়ারিশের তথ্য প্রদান করুন"
@@ -427,12 +435,61 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
             return false
         }
 
-        if (state.currentStep < 3) {
+        if (state.currentStep < 2) {
             _formState.value = state.copy(currentStep = state.currentStep + 1, errors = emptyMap())
             return true
         } else {
             submitAndGenerateCertificate()
             return true
+        }
+    }
+
+    fun saveDraft() {
+        viewModelScope.launch {
+            val state = _formState.value
+            val type = _selectedType.value ?: return@launch
+            val profile = unionProfile.value ?: UnionProfile(unionName = "ইউনিয়ন পরিষদ কার্যালয়", chairmanName = "চেয়ারম্যান")
+            val serialNo = "DRAFT-${BanglaHelper.generateReferenceNumber((totalCertificatesCount.value + 1).toLong())}"
+            val issueDate = BanglaHelper.getCurrentDateBangla()
+            val customJson = BanglaHelper.formatCustomFieldsJson(state.customFields)
+            val heirsJson = if (type.isSuccession) BanglaHelper.formatHeirsJson(state.heirs) else null
+            val bodyText = TemplateEngine.generateBodyText(
+                type = type,
+                applicantName = state.applicantName,
+                fatherOrHusbandName = state.fatherOrHusbandName,
+                motherName = state.motherName,
+                village = state.village,
+                wardNo = state.wardNo,
+                postOffice = state.postOffice,
+                upazila = state.upazila,
+                district = state.district,
+                customValues = state.customFields
+            )
+            val entity = GeneratedCertificate(
+                certificateTypeId = type.id,
+                certificateTitle = "${type.title} (খসড়া)",
+                applicantName = state.applicantName.ifBlank { "খসড়া আবেদনকারী" },
+                fatherOrHusbandName = state.fatherOrHusbandName,
+                motherName = state.motherName,
+                village = state.village,
+                wardNo = state.wardNo,
+                postOffice = state.postOffice,
+                upazila = state.upazila,
+                district = state.district,
+                nidOrBirthNo = state.nidOrBirthNo,
+                serialNo = serialNo,
+                issueDateBangla = issueDate,
+                applicantPhotoUri = if (type.requiresPhoto) state.applicantPhotoUri else null,
+                customFieldsJson = customJson,
+                heirsJson = heirsJson,
+                generatedBodyText = bodyText,
+                unionName = profile.unionName,
+                chairmanName = profile.chairmanName,
+                syncStatus = SyncStatus.DRAFT
+            )
+            certRepo.insert(entity)
+            _statusMessage.value = "সনদের খসড়া সফলভাবে সংরক্ষিত হয়েছে"
+            navigateTo(ScreenState.HISTORY)
         }
     }
 

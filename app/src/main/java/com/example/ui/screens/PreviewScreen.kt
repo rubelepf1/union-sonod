@@ -2,9 +2,17 @@ package com.example.ui.screens
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,10 +20,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,21 +34,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Print
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,7 +55,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -81,7 +86,6 @@ import com.example.ui.components.UpTopAppBar
 import com.example.ui.theme.BdGreenContainer
 import com.example.ui.theme.BdGreenDark
 import com.example.ui.theme.BdGreenPrimary
-import com.example.ui.theme.BdRedAccent
 import com.example.util.BanglaHelper
 import com.example.util.PdfPrintHelper
 import kotlinx.coroutines.launch
@@ -108,14 +112,21 @@ fun PreviewScreen(
         if (uri != null) {
             onUpdateLogo?.invoke(uri.toString())
             scope.launch {
-                snackbarHostState.showSnackbar("লোগো সফলভাবে পরিবর্তন করা হয়েছে")
+                snackbarHostState.showSnackbar("ইউনিয়ন পরিষদ লোগো সফলভাবে পরিবর্তন করা হয়েছে")
             }
         }
     }
 
-    var scale by remember { mutableFloatStateOf(1f) }
+    // Smooth Interactive Pinch-to-Zoom & Double-Tap Zoom State
+    var targetScale by remember { mutableFloatStateOf(1f) }
+    val animatedScale by animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "preview_scale"
+    )
+
     val transformState = rememberTransformableState { zoomChange, _, _ ->
-        scale = (scale * zoomChange).coerceIn(0.85f, 2.5f)
+        targetScale = (targetScale * zoomChange).coerceIn(0.80f, 3.0f)
     }
 
     Scaffold(
@@ -127,6 +138,7 @@ fun PreviewScreen(
                 showBackButton = true,
                 onBackClick = onBackClick,
                 actions = {
+                    // Quick Logo Change Action
                     IconButton(
                         onClick = {
                             logoPickerLauncher.launch(
@@ -137,20 +149,23 @@ fun PreviewScreen(
                     ) {
                         Icon(imageVector = Icons.Default.Image, contentDescription = "লোগো পরিবর্তন", tint = Color.White)
                     }
+                    // Zoom In
                     IconButton(
-                        onClick = { scale = (scale + 0.2f).coerceAtMost(2.5f) },
+                        onClick = { targetScale = (targetScale + 0.25f).coerceAtMost(3.0f) },
                         modifier = Modifier.testTag("preview_zoom_in")
                     ) {
                         Icon(imageVector = Icons.Default.ZoomIn, contentDescription = "বড় করুন", tint = Color.White)
                     }
+                    // Zoom Out
                     IconButton(
-                        onClick = { scale = (scale - 0.2f).coerceAtLeast(0.85f) },
+                        onClick = { targetScale = (targetScale - 0.25f).coerceAtLeast(0.80f) },
                         modifier = Modifier.testTag("preview_zoom_out")
                     ) {
                         Icon(imageVector = Icons.Default.ZoomOut, contentDescription = "ছোট করুন", tint = Color.White)
                     }
-                    if (scale != 1f) {
-                        IconButton(onClick = { scale = 1f }) {
+                    // Reset Zoom
+                    if (targetScale != 1f) {
+                        IconButton(onClick = { targetScale = 1f }) {
                             Icon(imageVector = Icons.Default.Refresh, contentDescription = "রিসেট", tint = Color.White)
                         }
                     }
@@ -158,86 +173,85 @@ fun PreviewScreen(
             )
         },
         bottomBar = {
-            PreviewBottomActions(
-                onSave = {
-                    if (pdfFile != null && certificate != null) {
-                        val savedUri = PdfPrintHelper.savePdfToDownloads(
-                            context = context,
-                            sourcePdf = pdfFile,
-                            filename = "ইউপি_সনদ_${certificate.applicantName}_${certificate.serialNo}"
+            FloatingPrintActionPanel(
+                context = context,
+                certificate = certificate,
+                pdfFile = pdfFile,
+                onEditClick = onEditClick,
+                onNotify = { msg ->
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = msg,
+                            duration = SnackbarDuration.Short
                         )
-                        scope.launch {
-                            val result = snackbarHostState.showSnackbar(
-                                message = "সনদটি Downloads ফোল্ডারে সংরক্ষিত হয়েছে",
-                                actionLabel = "খুলুন",
-                                duration = SnackbarDuration.Long
-                            )
-                            if (result == SnackbarResult.ActionPerformed) {
-                                PdfPrintHelper.openCertificate(context, pdfFile)
-                            }
-                        }
                     }
-                },
-                onPrint = {
-                    if (pdfFile != null && certificate != null) {
-                        PdfPrintHelper.printCertificate(context, pdfFile, certificate.certificateTitle)
-                    }
-                },
-                onShare = {
-                    if (pdfFile != null && certificate != null) {
-                        PdfPrintHelper.shareCertificate(context, pdfFile, certificate.certificateTitle)
-                    }
-                },
-                onEdit = onEditClick
+                }
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color(0xFFF1F5F3)
     ) { innerPadding ->
         if (certificate == null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "কোনো সনদ পাওয়া যায়নি")
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "কোনো সনদের তথ্য পাওয়া যায়নি",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            return@Scaffold
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .transformable(state = transformState)
-        ) {
+        } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Zoom hint tag
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Interactive Hint Badge with Live Zoom Percentage
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.padding(bottom = 12.dp)
                 ) {
-                    Text(
-                        text = "পিন্চ করে জুম করুন অথবা ওপরে +/- বাটন চাপুন (${(scale * 100).toInt()}%)",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "💡 দুই আঙুলে পিঞ্চ বা ডাবল-ট্যাপ করে জুম করুন (${(animatedScale * 100).toInt()}%)",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                // A4 Document Preview Card
+                // A4 Document Preview Card with Double-Tap and Pinch Gestures
                 Box(
                     modifier = Modifier
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    targetScale = if (targetScale > 1.2f) 1f else 1.85f
+                                }
+                            )
+                        }
+                        .transformable(state = transformState)
                         .graphicsLayer(
-                            scaleX = scale,
-                            scaleY = scale
+                            scaleX = animatedScale,
+                            scaleY = animatedScale
                         )
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(4.dp))
+                        .padding(horizontal = 12.dp)
+                        .clip(RoundedCornerShape(6.dp))
                         .background(Color.White)
-                        .border(1.5.dp, Color(0xFF14462D), RoundedCornerShape(4.dp))
+                        .border(1.5.dp, Color(0xFF006A4E), RoundedCornerShape(6.dp))
                         .padding(14.dp)
                 ) {
                     A4CertificateContent(
@@ -257,6 +271,9 @@ fun PreviewScreen(
     }
 }
 
+/**
+ * Clean, Standard A4 Certificate Layout
+ */
 @Composable
 fun A4CertificateContent(
     certificate: GeneratedCertificate,
@@ -327,7 +344,7 @@ fun A4CertificateContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (shouldShowPhoto) {
-                Spacer(modifier = Modifier.width(54.dp)) // balance photo width
+                Spacer(modifier = Modifier.width(54.dp)) // balance photo width for centered title
             }
             Box(
                 modifier = Modifier.weight(1f),
@@ -378,94 +395,127 @@ fun A4CertificateContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Ref No and Date Row
+        // Serial Number & Date
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = "স্মারক নং: ${certificate.serialNo}",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
-                color = Color.Black
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
+                color = Color.DarkGray
             )
             Text(
                 text = "তারিখ: ${certificate.issueDateBangla}",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
-                color = Color.Black
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
+                color = Color.DarkGray
             )
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
-        HorizontalDivider(color = Color(0xFFB4BEB9), thickness = 0.8.dp)
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Body Paragraph
+        // Formal Bangla Certificate Body
         Text(
             text = certificate.generatedBodyText,
             style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 13.5.sp,
-                lineHeight = 22.sp
+                fontSize = 13.sp,
+                lineHeight = 22.sp,
+                textAlign = TextAlign.Justify
             ),
-            color = Color(0xFF141414),
-            textAlign = TextAlign.Justify,
+            color = Color.Black,
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Succession heirs table if present
-        val heirs = certificate.heirsJson?.let { BanglaHelper.parseHeirsJson(it) } ?: emptyList()
-        if (heirs.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(10.dp))
-            PreviewHeirsTable(heirs = heirs)
+        // Succession Heirs Table
+        if (!certificate.heirsJson.isNullOrBlank()) {
+            val heirs = BanglaHelper.parseHeirsJson(certificate.heirsJson)
+            if (heirs.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "ওয়ারিশগণের তালিকা:",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                    color = Color.Black,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(0.8.dp, Color.Gray)
+                ) {
+                    // Header Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFEEF3F0))
+                            .padding(vertical = 4.dp, horizontal = 6.dp)
+                    ) {
+                        Text(text = "ক্র.নং", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), modifier = Modifier.width(36.dp))
+                        Text(text = "নাম", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), modifier = Modifier.weight(1f))
+                        Text(text = "সম্পর্ক", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), modifier = Modifier.width(64.dp))
+                        Text(text = "বয়স", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), modifier = Modifier.width(44.dp))
+                    }
+                    HorizontalDivider(color = Color.Gray, thickness = 0.8.dp)
+
+                    heirs.forEachIndexed { i, h ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 3.dp, horizontal = 6.dp)
+                        ) {
+                            Text(text = BanglaHelper.toBanglaDigits((i + 1).toString()), style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp), modifier = Modifier.width(36.dp))
+                            Text(text = h.name, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp), modifier = Modifier.weight(1f))
+                            Text(text = h.relation, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp), modifier = Modifier.width(64.dp))
+                            Text(text = BanglaHelper.toBanglaDigits(h.age), style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp), modifier = Modifier.width(44.dp))
+                        }
+                        if (i < heirs.size - 1) {
+                            HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)
+                        }
+                    }
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(36.dp))
 
-        // Footer Section: Member sig on left, Chairman sig on right
+        // Signatures Block (Ward Member on left, Chairman on right)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
-            // Left: Member
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(modifier = Modifier.width(120.dp).height(1.dp).background(Color.DarkGray))
+                Box(modifier = Modifier.width(110.dp).height(0.8.dp).background(Color.Gray))
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "সত্যায়নকারী ইউপি সদস্য",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.5.sp),
                     color = Color.Black
                 )
                 Text(
-                    text = "স্বাক্ষর",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                    text = "স্বাক্ষর ও সিল",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
                     color = Color.DarkGray
                 )
             }
 
-            // Right: Chairman signature block
-            Column(horizontalAlignment = Alignment.End) {
-                Box(modifier = Modifier.width(135.dp).height(1.dp).background(Color.DarkGray))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(modifier = Modifier.width(130.dp).height(0.8.dp).background(Color.Gray))
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = certificate.chairmanName,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
                     color = Color.Black
                 )
                 Text(
-                    text = "চেয়ারম্যান",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.5.sp, fontWeight = FontWeight.Bold),
-                    color = Color.Black
+                    text = "চেয়ারম্যান",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 10.sp),
+                    color = Color(0xFF005F41)
                 )
                 Text(
                     text = certificate.unionName,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.5.sp),
-                    color = Color.DarkGray
-                )
-                Text(
-                    text = "${certificate.upazila}, ${certificate.district}",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.5.sp),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                     color = Color.DarkGray
                 )
             }
@@ -473,125 +523,165 @@ fun A4CertificateContent(
     }
 }
 
+/**
+ * Floating Enterprise Bottom Sheet with 1-click Print, PDF download, and QR Verification Status Card
+ */
 @Composable
-fun PreviewHeirsTable(heirs: List<com.example.data.model.Heir>) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(0.8.dp, Color(0xFF333333))
-    ) {
-        // Table Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFEEF3F0))
-                .padding(vertical = 4.dp, horizontal = 6.dp)
-        ) {
-            Text(text = "ক্র.নং", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.5.sp), modifier = Modifier.width(36.dp))
-            Text(text = "ওয়ারিশগণের নাম", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.5.sp), modifier = Modifier.weight(1f))
-            Text(text = "সম্পর্ক", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.5.sp), modifier = Modifier.width(55.dp))
-            Text(text = "বয়স", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.5.sp), modifier = Modifier.width(40.dp))
-        }
-        HorizontalDivider(color = Color(0xFF333333), thickness = 0.8.dp)
-
-        heirs.forEachIndexed { i, h ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 3.dp, horizontal = 6.dp)
-            ) {
-                Text(text = BanglaHelper.toBanglaDigits((i + 1).toString()), style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp), modifier = Modifier.width(36.dp))
-                Text(text = h.name, style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp), modifier = Modifier.weight(1f))
-                Text(text = h.relation, style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp), modifier = Modifier.width(55.dp))
-                Text(text = BanglaHelper.toBanglaDigits(h.age), style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp), modifier = Modifier.width(40.dp))
-            }
-            if (i < heirs.size - 1) {
-                HorizontalDivider(color = Color(0xFFCCCCCC), thickness = 0.5.dp)
-            }
-        }
-    }
-}
-
-@Composable
-fun PreviewBottomActions(
-    onSave: () -> Unit,
-    onPrint: () -> Unit,
-    onShare: () -> Unit,
-    onEdit: () -> Unit
+fun FloatingPrintActionPanel(
+    context: Context,
+    certificate: GeneratedCertificate?,
+    pdfFile: File?,
+    onEditClick: () -> Unit,
+    onNotify: (String) -> Unit
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 8.dp,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        tonalElevation = 10.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // 1. Digital QR Code Verification Status Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA5D6A7)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Button(
-                    onClick = onSave,
-                    colors = ButtonDefaults.buttonColors(containerColor = BdGreenPrimary),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
-                        .testTag("preview_button_save")
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "PDF সেভ", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White)
+                            .border(1.dp, Color(0xFF81C784), RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.QrCode2,
+                            contentDescription = "কিউআর কোড",
+                            tint = Color(0xFF1B5E20),
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
 
-                Button(
-                    onClick = onPrint,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004D38)),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
-                        .testTag("preview_button_print")
-                ) {
-                    Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "প্রিন্ট করুন", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "ডিজিটাল কিউআর কোড ভেরিফাইড",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(imageVector = Icons.Default.Verified, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(14.dp))
+                        }
+                        Text(
+                            text = "স্মারক নং: ${certificate?.serialNo ?: "অনির্ধারিত"} • সরকারি সত্যায়ন প্রস্তুত",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, color = Color(0xFF2E7D32))
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // 2. Primary 1-Click Direct Print Button
+            Button(
+                onClick = {
+                    if (pdfFile != null && certificate != null) {
+                        PdfPrintHelper.printCertificate(context, pdfFile, certificate.certificateTitle)
+                    } else {
+                        onNotify("পিডিএফ ফাইল প্রস্তুত হচ্ছে...")
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = BdGreenPrimary),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 50.dp)
+                    .testTag("preview_button_print")
+            ) {
+                Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "সরাসরি প্রিন্ট করুন (1-Click Print)",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 3. Secondary Actions Row (Save PDF, Share, and Edit)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // PDF Download
                 OutlinedButton(
-                    onClick = onShare,
+                    onClick = {
+                        if (pdfFile != null && certificate != null) {
+                            val uri = PdfPrintHelper.savePdfToDownloads(
+                                context = context,
+                                sourcePdf = pdfFile,
+                                filename = "ইউপি_সনদ_${certificate.applicantName}_${certificate.serialNo}"
+                            )
+                            if (uri != null) {
+                                onNotify("সনদটি Downloads ফোল্ডারে সংরক্ষিত হয়েছে ✓")
+                            } else {
+                                onNotify("ডাউনলোড সম্পন্ন হয়েছে")
+                            }
+                        }
+                    },
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp)
-                        .testTag("preview_button_share")
+                        .heightIn(min = 48.dp)
+                        .testTag("preview_button_download")
                 ) {
-                    Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "শেয়ার করুন", fontSize = 12.5.sp)
+                    Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "ডাউনলোড", style = MaterialTheme.typography.labelMedium)
                 }
 
+                // Share
                 OutlinedButton(
-                    onClick = onEdit,
+                    onClick = {
+                        if (pdfFile != null && certificate != null) {
+                            PdfPrintHelper.shareCertificate(context, pdfFile, certificate.certificateTitle)
+                        }
+                    },
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp)
+                        .weight(0.9f)
+                        .heightIn(min = 48.dp)
+                        .testTag("preview_button_share")
+                ) {
+                    Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "শেয়ার", style = MaterialTheme.typography.labelMedium)
+                }
+
+                // Edit Form
+                OutlinedButton(
+                    onClick = onEditClick,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(0.9f)
+                        .heightIn(min = 48.dp)
                         .testTag("preview_button_edit")
                 ) {
-                    Icon(imageVector = Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "তথ্য এডিট", fontSize = 12.5.sp)
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "সংশোধন", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }

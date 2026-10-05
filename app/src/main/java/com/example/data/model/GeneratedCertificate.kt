@@ -4,10 +4,12 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 object SyncStatus {
-    const val SYNCED = "SYNCED"
-    const val PENDING_INSERT = "PENDING_INSERT"
-    const val PENDING_UPDATE = "PENDING_UPDATE"
-    const val PENDING_DELETE = "PENDING_DELETE"
+    const val SYNCED = "SYNCED"                 // অনলাইনে সংরক্ষিত
+    const val PENDING_INSERT = "PENDING_INSERT" // সিঙ্ক পেন্ডিং
+    const val PENDING_UPDATE = "PENDING_UPDATE" // সিঙ্ক পেন্ডিং
+    const val PENDING_DELETE = "PENDING_DELETE" // সিঙ্ক পেন্ডিং
+    const val DRAFT = "DRAFT"                   // অফলাইন ড্রাফট
+    const val FAILED = "FAILED"                 // সিঙ্ক ব্যর্থ
 }
 
 @Entity(tableName = "generated_certificates")

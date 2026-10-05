@@ -67,8 +67,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CertificateType
+import com.example.data.model.GeneratedCertificate
 import com.example.data.model.UnionProfile
 import com.example.data.model.UserProfile
+import com.example.ui.components.CertificateSyncBadge
+import com.example.ui.components.GlobalSyncBar
 import com.example.ui.components.UpBottomNav
 import com.example.ui.components.UpTopAppBar
 import com.example.ui.theme.BdGreenContainer
@@ -83,6 +86,7 @@ fun HomeScreen(
     unionProfile: UnionProfile?,
     currentUser: UserProfile?,
     certificateTypes: List<CertificateType>,
+    recentCertificates: List<GeneratedCertificate> = emptyList(),
     pendingSyncCount: Int,
     isSyncing: Boolean,
     totalCertificatesCount: Int,
@@ -91,6 +95,8 @@ fun HomeScreen(
     onSearchChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
     onSelectCertificate: (CertificateType) -> Unit,
+    onOpenCertificate: (GeneratedCertificate) -> Unit = {},
+    onRetrySync: (GeneratedCertificate) -> Unit = {},
     onTriggerSync: () -> Unit,
     onNavigate: (ScreenState) -> Unit
 ) {
@@ -174,6 +180,60 @@ fun HomeScreen(
                     pendingSyncCount = pendingSyncCount,
                     totalCount = totalCertificatesCount
                 )
+            }
+
+            // Top Global Sync Bar (Real-time pending sync status & trigger)
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                GlobalSyncBar(
+                    pendingSyncCount = pendingSyncCount,
+                    isSyncing = isSyncing,
+                    onTriggerSync = onTriggerSync
+                )
+            }
+
+            // Recent Generated Certificates (if any, with exact sync status badges)
+            if (recentCertificates.isNotEmpty() && searchQuery.isBlank()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "সাম্প্রতিক তৈরি সনদ",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Surface(
+                                color = BdGreenPrimary.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.clickable { onNavigate(ScreenState.HISTORY) }
+                            ) {
+                                Text(
+                                    text = "সবগুলো দেখুন (${BanglaHelper.toBanglaDigits(totalCertificatesCount)}) →",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = BdGreenPrimary,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            recentCertificates.forEach { cert ->
+                                RecentCertificateHomeCard(
+                                    cert = cert,
+                                    onClick = { onOpenCertificate(cert) },
+                                    onRetrySync = { onRetrySync(cert) }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // Search Bar
@@ -512,5 +572,67 @@ fun getCategoryColor(category: String): Pair<Color, Color> {
         "বাণিজ্যিক সেবা" -> Pair(Color(0xFFEDE7F6), Color(0xFF512DA8))
         "বিশেষ প্রত্যয়ন" -> Pair(Color(0xFFE0F2F1), Color(0xFF004D40))
         else -> Pair(Color(0xFFECEFF1), Color(0xFF37474F))
+    }
+}
+
+@Composable
+fun RecentCertificateHomeCard(
+    cert: GeneratedCertificate,
+    onClick: () -> Unit,
+    onRetrySync: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        elevation = CardDefaults.cardElevation(1.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .testTag("home_recent_cert_${cert.id}")
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = cert.certificateTitle,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = BdGreenDark
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "• ${cert.issueDateBangla}",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = cert.applicantName,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "স্মারক নং: ${cert.serialNo}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.5.sp),
+                    color = Color.Gray
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Sync Status Badge
+            CertificateSyncBadge(
+                syncStatus = cert.syncStatus,
+                onRetry = onRetrySync
+            )
+        }
     }
 }

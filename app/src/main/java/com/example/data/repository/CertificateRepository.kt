@@ -44,12 +44,24 @@ class CertificateRepository(
     suspend fun getById(id: Long): GeneratedCertificate? = dao.getCertificateById(id)
 
     suspend fun insert(certificate: GeneratedCertificate): Long = dao.insertCertificate(
-        certificate.copy(syncStatus = SyncStatus.PENDING_INSERT)
+        certificate.copy(
+            syncStatus = if (certificate.syncStatus == SyncStatus.DRAFT) SyncStatus.DRAFT else SyncStatus.PENDING_INSERT
+        )
     )
 
     suspend fun update(certificate: GeneratedCertificate) = dao.updateCertificate(
-        certificate.copy(syncStatus = SyncStatus.PENDING_UPDATE)
+        certificate.copy(
+            syncStatus = if (certificate.syncStatus == SyncStatus.DRAFT) SyncStatus.DRAFT else SyncStatus.PENDING_UPDATE
+        )
     )
+
+    suspend fun updateSyncStatus(id: Long, remoteId: String, newStatus: String) =
+        dao.updateSyncStatus(id, remoteId, newStatus)
+
+    suspend fun updateSyncStatusOnly(id: Long, newStatus: String) =
+        dao.updateSyncStatusOnly(id, newStatus)
+
+    suspend fun markFailed(id: Long) = dao.markFailed(id)
 
     suspend fun delete(id: Long) = dao.markDeletedLocally(id)
 

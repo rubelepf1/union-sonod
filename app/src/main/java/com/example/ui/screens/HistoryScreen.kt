@@ -63,6 +63,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.GeneratedCertificate
 import com.example.data.model.SyncStatus
+import com.example.ui.components.CertificateSyncBadge
+import com.example.ui.components.GlobalSyncBar
 import com.example.ui.components.UpBottomNav
 import com.example.ui.components.UpTopAppBar
 import com.example.ui.theme.BdGreenContainer
@@ -79,6 +81,7 @@ fun HistoryScreen(
     pendingSyncCount: Int,
     isSyncing: Boolean,
     onTriggerSync: () -> Unit,
+    onRetrySync: (GeneratedCertificate) -> Unit = {},
     onOpenPreview: (GeneratedCertificate) -> Unit,
     onDuplicate: (GeneratedCertificate) -> Unit,
     onDelete: (GeneratedCertificate) -> Unit,
@@ -176,11 +179,19 @@ fun HistoryScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Search Input & Sync Status Bar
+            // Global Sync Status Bar (Real-time pending sync counter & manual sync)
+            GlobalSyncBar(
+                pendingSyncCount = pendingSyncCount,
+                isSyncing = isSyncing,
+                onTriggerSync = onTriggerSync,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 4.dp)
+            )
+
+            // Search Input
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
@@ -211,26 +222,9 @@ fun HistoryScreen(
                         focusedContainerColor = MaterialTheme.colorScheme.surface
                     ),
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
                         .testTag("history_search_input")
                 )
-
-                if (pendingSyncCount > 0) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    OutlinedButton(
-                        onClick = onTriggerSync,
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "${BanglaHelper.toBanglaDigits(pendingSyncCount)} সিঙ্ক",
-                            style = MaterialTheme.typography.labelSmall.copy(color = GoldAccent)
-                        )
-                    }
-                }
             }
 
             // Date Filter Chips
@@ -317,6 +311,7 @@ fun HistoryScreen(
                             cert = cert,
                             onOpen = { onOpenPreview(cert) },
                             onDuplicate = { onDuplicate(cert) },
+                            onRetry = { onRetrySync(cert) },
                             onDelete = { certificateToDelete = cert }
                         )
                     }
@@ -331,6 +326,7 @@ fun HistoryCertificateItem(
     cert: GeneratedCertificate,
     onOpen: () -> Unit,
     onDuplicate: () -> Unit,
+    onRetry: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -361,32 +357,11 @@ fun HistoryCertificateItem(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Sync status indicator pill
-                val isSynced = cert.syncStatus == SyncStatus.SYNCED
-                Surface(
-                    color = if (isSynced) BdGreenPrimary.copy(alpha = 0.1f) else GoldAccent.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isSynced) Icons.Default.CloudDone else Icons.Default.CloudUpload,
-                            contentDescription = null,
-                            tint = if (isSynced) BdGreenPrimary else GoldAccent,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = if (isSynced) "ক্লাউড" else "লোকাল",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 10.sp,
-                                color = if (isSynced) BdGreenPrimary else GoldAccent
-                            )
-                        )
-                    }
-                }
+                // Visual Status Badge: "অফলাইন ড্রাফট", "সিঙ্ক পেন্ডিং", "অনলাইনে সংরক্ষিত", "সিঙ্ক ব্যর্থ"
+                CertificateSyncBadge(
+                    syncStatus = cert.syncStatus,
+                    onRetry = onRetry
+                )
 
                 Spacer(modifier = Modifier.width(8.dp))
 
@@ -432,6 +407,24 @@ fun HistoryCertificateItem(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // If sync failed, show prominent retry button
+                if (cert.syncStatus == SyncStatus.FAILED) {
+                    Button(
+                        onClick = onRetry,
+                        colors = ButtonDefaults.buttonColors(containerColor = BdRedAccent),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        modifier = Modifier
+                            .height(34.dp)
+                            .testTag("history_retry_btn_${cert.id}")
+                    ) {
+                        Icon(imageVector = Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "পুনরায় চেষ্টা করুন", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
                 OutlinedButton(
                     onClick = onDuplicate,
                     shape = RoundedCornerShape(8.dp),
