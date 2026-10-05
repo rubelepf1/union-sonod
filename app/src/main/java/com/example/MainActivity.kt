@@ -152,6 +152,10 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
                 PreviewScreen(
                     certificate = previewCert,
                     pdfFile = generatedPdf,
+                    unionProfile = unionProfile,
+                    onUpdateLogo = { newLogo ->
+                        viewModel.updateUnionLogo(newLogo)
+                    },
                     onEditClick = {
                         viewModel.navigateTo(ScreenState.FORM)
                     },

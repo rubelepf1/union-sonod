@@ -18,6 +18,7 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.res.ResourcesCompat
 import com.example.R
+import com.example.data.model.CertificateRegistry
 import com.example.data.model.GeneratedCertificate
 import com.example.data.model.Heir
 import java.io.File
@@ -32,14 +33,15 @@ object PdfGenerator {
     fun generateCertificatePdf(
         context: Context,
         certificate: GeneratedCertificate,
-        targetFile: File? = null
+        targetFile: File? = null,
+        logoUri: String? = null
     ): File {
         val pdfDoc = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create()
         val page = pdfDoc.startPage(pageInfo)
         val canvas = page.canvas
 
-        drawCertificateOnCanvas(context, canvas, certificate, PAGE_WIDTH.toFloat(), PAGE_HEIGHT.toFloat())
+        drawCertificateOnCanvas(context, canvas, certificate, PAGE_WIDTH.toFloat(), PAGE_HEIGHT.toFloat(), logoUri)
 
         pdfDoc.finishPage(page)
 
@@ -62,7 +64,8 @@ object PdfGenerator {
         canvas: Canvas,
         cert: GeneratedCertificate,
         width: Float,
-        height: Float
+        height: Float,
+        logoUri: String? = null
     ) {
         val notoBengali = try {
             ResourcesCompat.getFont(context, R.font.noto_sans_bengali)
@@ -97,26 +100,26 @@ object PdfGenerator {
         drawCornerDecorations(canvas, margin + 6f, margin + 6f, width - margin - 6f, height - margin - 6f)
 
         // 2. Top Emblem & Header
-        val emblemRadius = 22f
+        val emblemRadius = 24f
         val emblemCenterX = width / 2f
         val emblemCenterY = margin + 34f
-        drawGovernmentEmblem(canvas, emblemCenterX, emblemCenterY, emblemRadius)
+        drawUnionParishadEmblem(context, canvas, emblemCenterX, emblemCenterY, emblemRadius, logoUri, notoBengali)
 
         var curY = emblemCenterY + emblemRadius + 14f
 
         val govtPaint = Paint().apply {
-            color = Color.BLACK
-            textSize = 12f
+            color = Color.rgb(0, 95, 65)
+            textSize = 12.5f
             isFakeBoldText = true
             textAlign = Paint.Align.CENTER
             typeface = notoBengali
             isAntiAlias = true
         }
-        canvas.drawText("গণপ্রজাতন্ত্রী বাংলাদেশ সরকার", width / 2f, curY, govtPaint)
+        canvas.drawText("স্থানীয় সরকার বিভাগ", width / 2f, curY, govtPaint)
 
         curY += 16f
         val unionPaint = Paint().apply {
-            color = Color.rgb(0, 95, 65)
+            color = Color.BLACK
             textSize = 17f
             isFakeBoldText = true
             textAlign = Paint.Align.CENTER
@@ -135,12 +138,19 @@ object PdfGenerator {
         }
         canvas.drawText("উপজেলা: ${cert.upazila}, জেলা: ${cert.district}", width / 2f, curY, subHeaderPaint)
 
-        // Draw Passport Photo Box on Top Right
-        val photoWidth = 72f
-        val photoHeight = 86f
-        val photoX = width - margin - photoWidth - 14f
-        val photoY = margin + 14f
-        drawApplicantPhoto(context, canvas, cert.applicantPhotoUri, photoX, photoY, photoWidth, photoHeight, notoBengali)
+        // Draw Passport Photo Box on Top Right ONLY IF this certificate type actually requires/supports photo
+        val certType = CertificateRegistry.findById(cert.certificateTypeId)
+        val requiresPhoto = certType?.requiresPhoto == true
+        val hasPhoto = !cert.applicantPhotoUri.isNullOrBlank()
+        val shouldDrawPhoto = requiresPhoto
+
+        if (shouldDrawPhoto) {
+            val photoWidth = 72f
+            val photoHeight = 86f
+            val photoX = width - margin - photoWidth - 14f
+            val photoY = margin + 14f
+            drawApplicantPhoto(context, canvas, cert.applicantPhotoUri, photoX, photoY, photoWidth, photoHeight, notoBengali)
+        }
 
         // Header separator line
         curY += 10f
@@ -299,43 +309,190 @@ object PdfGenerator {
         canvas.drawLine(right, bottom, right, bottom - s, p)
     }
 
-    private fun drawGovernmentEmblem(canvas: Canvas, cx: Float, cy: Float, r: Float) {
-        val greenPaint = Paint().apply {
-            color = Color.rgb(0, 106, 78)
+    private fun drawUnionParishadEmblem(
+        context: Context,
+        canvas: Canvas,
+        cx: Float,
+        cy: Float,
+        r: Float,
+        logoUri: String?,
+        typeface: android.graphics.Typeface?
+    ) {
+        val greenColor = Color.rgb(0, 106, 78)
+        val greenBorderPaint = Paint().apply {
+            color = greenColor
             style = Paint.Style.STROKE
-            strokeWidth = 1.5f
+            strokeWidth = 1.8f
             isAntiAlias = true
         }
-        val innerCirclePaint = Paint().apply {
-            color = Color.rgb(244, 42, 65)
-            style = Paint.Style.FILL
-            isAntiAlias = true
+
+        // 1. Try custom logo first if present
+        if (!logoUri.isNullOrBlank()) {
+            try {
+                val uri = Uri.parse(logoUri)
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val bmp = BitmapFactory.decodeStream(stream)
+                    if (bmp != null) {
+                        canvas.save()
+                        val clipPath = android.graphics.Path().apply {
+                            addCircle(cx, cy, r, android.graphics.Path.Direction.CW)
+                        }
+                        canvas.clipPath(clipPath)
+                        val dstRect = RectF(cx - r, cy - r, cx + r, cy + r)
+                        canvas.drawBitmap(bmp, Rect(0, 0, bmp.width, bmp.height), dstRect, Paint(Paint.FILTER_BITMAP_FLAG))
+                        canvas.restore()
+                        canvas.drawCircle(cx, cy, r, greenBorderPaint)
+                        return
+                    }
+                }
+            } catch (_: Exception) {}
         }
-        val starPaint = Paint().apply {
+
+        // 2. Default Authentic Union Parishad Local Government Monogram
+        val whiteRingPaint = Paint().apply {
             color = Color.WHITE
             style = Paint.Style.FILL
             isAntiAlias = true
         }
+        val innerDiscPaint = Paint().apply {
+            color = Color.rgb(0, 95, 65) // UP Green
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+        val goldAccentPaint = Paint().apply {
+            color = Color.rgb(217, 119, 6)
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
+            isAntiAlias = true
+        }
+        val petalPaint = Paint().apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+        val petalBorderPaint = Paint().apply {
+            color = Color.rgb(217, 119, 6)
+            style = Paint.Style.STROKE
+            strokeWidth = 0.8f
+            isAntiAlias = true
+        }
+        val starPaint = Paint().apply {
+            color = Color.rgb(220, 38, 38)
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+        val wavePaint = Paint().apply {
+            color = Color.rgb(147, 197, 253) // light blue waves
+            style = Paint.Style.STROKE
+            strokeWidth = 1.2f
+            isAntiAlias = true
+        }
+        val paddyPaint = Paint().apply {
+            color = Color.rgb(245, 158, 11) // Golden ears of paddy
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+        val jutePaint = Paint().apply {
+            color = Color.rgb(22, 163, 74) // Green jute leaves
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
 
-        canvas.drawCircle(cx, cy, r, greenPaint)
-        canvas.drawCircle(cx, cy, r * 0.72f, innerCirclePaint)
+        // 1. Draw outer circle border & white background
+        canvas.drawCircle(cx, cy, r, whiteRingPaint)
+        canvas.drawCircle(cx, cy, r, greenBorderPaint)
 
-        // Draw star inside red circle
-        val s = r * 0.35f
-        val path = android.graphics.Path().apply {
-            moveTo(cx, cy - s)
-            lineTo(cx + s * 0.25f, cy - s * 0.25f)
-            lineTo(cx + s, cy)
-            lineTo(cx + s * 0.35f, cy + s * 0.4f)
-            lineTo(cx + s * 0.6f, cy + s)
-            lineTo(cx, cy + s * 0.55f)
-            lineTo(cx - s * 0.6f, cy + s)
-            lineTo(cx - s * 0.35f, cy + s * 0.4f)
-            lineTo(cx - s, cy)
-            lineTo(cx - s * 0.25f, cy - s * 0.25f)
+        // 2. 4 Red stars in the outer ring
+        val starR = r * 0.83f
+        val starSize = r * 0.08f
+        drawTinyStar(canvas, cx - starR * 0.70f, cy + starR * 0.40f, starSize, starPaint)
+        drawTinyStar(canvas, cx - starR * 0.88f, cy + starR * 0.10f, starSize, starPaint)
+        drawTinyStar(canvas, cx + starR * 0.70f, cy + starR * 0.40f, starSize, starPaint)
+        drawTinyStar(canvas, cx + starR * 0.88f, cy + starR * 0.10f, starSize, starPaint)
+
+        // 3. Ring Text: "স্থানীয় সরকার বিভাগ" on top, "ইউনিয়ন পরিষদ" on bottom
+        val ringTextPaint = Paint().apply {
+            color = greenColor
+            textSize = r * 0.20f
+            isFakeBoldText = true
+            textAlign = Paint.Align.CENTER
+            this.typeface = typeface
+            isAntiAlias = true
+        }
+        val topArcPath = android.graphics.Path().apply {
+            addArc(RectF(cx - r * 0.84f, cy - r * 0.84f, cx + r * 0.84f, cy + r * 0.84f), 195f, 150f)
+        }
+        canvas.drawTextOnPath("স্থানীয় সরকার বিভাগ", topArcPath, 0f, 0f, ringTextPaint)
+
+        val bottomArcPath = android.graphics.Path().apply {
+            addArc(RectF(cx - r * 0.84f, cy - r * 0.84f, cx + r * 0.84f, cy + r * 0.84f), 50f, 80f)
+        }
+        canvas.drawTextOnPath("ইউনিয়ন পরিষদ", bottomArcPath, 0f, 0f, ringTextPaint)
+
+        // 4. Inner Green Disc
+        val innerR = r * 0.60f
+        canvas.drawCircle(cx, cy, innerR, innerDiscPaint)
+        canvas.drawCircle(cx, cy, innerR, goldAccentPaint)
+
+        // 5. Water Waves under Shapla
+        canvas.drawLine(cx - innerR * 0.6f, cy + innerR * 0.45f, cx + innerR * 0.6f, cy + innerR * 0.45f, wavePaint)
+        canvas.drawLine(cx - innerR * 0.45f, cy + innerR * 0.6f, cx + innerR * 0.45f, cy + innerR * 0.6f, wavePaint)
+
+        // 6. Shapla (Water Lily) Petals in Center
+        val centerPetal = android.graphics.Path().apply {
+            moveTo(cx, cy - innerR * 0.45f)
+            cubicTo(cx - innerR * 0.22f, cy - innerR * 0.2f, cx - innerR * 0.18f, cy + innerR * 0.25f, cx, cy + innerR * 0.35f)
+            cubicTo(cx + innerR * 0.18f, cy + innerR * 0.25f, cx + innerR * 0.22f, cy - innerR * 0.2f, cx, cy - innerR * 0.45f)
             close()
         }
-        canvas.drawPath(path, starPaint)
+        canvas.drawPath(centerPetal, petalPaint)
+        canvas.drawPath(centerPetal, petalBorderPaint)
+
+        val leftPetal = android.graphics.Path().apply {
+            moveTo(cx - innerR * 0.1f, cy - innerR * 0.35f)
+            cubicTo(cx - innerR * 0.45f, cy - innerR * 0.1f, cx - innerR * 0.40f, cy + innerR * 0.25f, cx, cy + innerR * 0.35f)
+            cubicTo(cx - innerR * 0.1f, cy + innerR * 0.2f, cx - innerR * 0.05f, cy - innerR * 0.1f, cx - innerR * 0.1f, cy - innerR * 0.35f)
+            close()
+        }
+        canvas.drawPath(leftPetal, petalPaint)
+        canvas.drawPath(leftPetal, petalBorderPaint)
+
+        val rightPetal = android.graphics.Path().apply {
+            moveTo(cx + innerR * 0.1f, cy - innerR * 0.35f)
+            cubicTo(cx + innerR * 0.45f, cy - innerR * 0.1f, cx + innerR * 0.40f, cy + innerR * 0.25f, cx, cy + innerR * 0.35f)
+            cubicTo(cx + innerR * 0.1f, cy + innerR * 0.2f, cx + innerR * 0.05f, cy - innerR * 0.1f, cx + innerR * 0.1f, cy - innerR * 0.35f)
+            close()
+        }
+        canvas.drawPath(rightPetal, petalPaint)
+        canvas.drawPath(rightPetal, petalBorderPaint)
+
+        // 7. Paddy / Rice grains flanking petals
+        canvas.drawCircle(cx - innerR * 0.55f, cy + innerR * 0.1f, innerR * 0.09f, paddyPaint)
+        canvas.drawCircle(cx - innerR * 0.50f, cy - innerR * 0.1f, innerR * 0.09f, paddyPaint)
+        canvas.drawCircle(cx + innerR * 0.55f, cy + innerR * 0.1f, innerR * 0.09f, paddyPaint)
+        canvas.drawCircle(cx + innerR * 0.50f, cy - innerR * 0.1f, innerR * 0.09f, paddyPaint)
+
+        // 8. 3 Jute Leaves at Top
+        canvas.drawCircle(cx, cy - innerR * 0.65f, innerR * 0.09f, jutePaint)
+        canvas.drawCircle(cx - innerR * 0.18f, cy - innerR * 0.58f, innerR * 0.08f, jutePaint)
+        canvas.drawCircle(cx + innerR * 0.18f, cy - innerR * 0.58f, innerR * 0.08f, jutePaint)
+    }
+
+    private fun drawTinyStar(canvas: Canvas, cx: Float, cy: Float, size: Float, paint: Paint) {
+        val path = android.graphics.Path().apply {
+            moveTo(cx, cy - size)
+            lineTo(cx + size * 0.25f, cy - size * 0.25f)
+            lineTo(cx + size, cy)
+            lineTo(cx + size * 0.35f, cy + size * 0.4f)
+            lineTo(cx + size * 0.6f, cy + size)
+            lineTo(cx, cy + size * 0.55f)
+            lineTo(cx - size * 0.6f, cy + size)
+            lineTo(cx - size * 0.35f, cy + size * 0.4f)
+            lineTo(cx - size, cy)
+            lineTo(cx - size * 0.25f, cy - size * 0.25f)
+            close()
+        }
+        canvas.drawPath(path, paint)
     }
 
     private fun drawApplicantPhoto(

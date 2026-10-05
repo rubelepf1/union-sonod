@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -26,6 +27,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Print
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ZoomIn
@@ -61,12 +67,16 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.R
+import com.example.data.model.CertificateRegistry
 import com.example.data.model.GeneratedCertificate
+import com.example.data.model.UnionProfile
 import com.example.ui.components.UpTopAppBar
 import com.example.ui.theme.BdGreenContainer
 import com.example.ui.theme.BdGreenDark
@@ -81,6 +91,8 @@ import java.io.File
 fun PreviewScreen(
     certificate: GeneratedCertificate?,
     pdfFile: File?,
+    unionProfile: UnionProfile? = null,
+    onUpdateLogo: ((String?) -> Unit)? = null,
     onEditClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
@@ -89,6 +101,17 @@ fun PreviewScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val logoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            onUpdateLogo?.invoke(uri.toString())
+            scope.launch {
+                snackbarHostState.showSnackbar("লোগো সফলভাবে পরিবর্তন করা হয়েছে")
+            }
+        }
+    }
 
     var scale by remember { mutableFloatStateOf(1f) }
     val transformState = rememberTransformableState { zoomChange, _, _ ->
@@ -104,6 +127,16 @@ fun PreviewScreen(
                 showBackButton = true,
                 onBackClick = onBackClick,
                 actions = {
+                    IconButton(
+                        onClick = {
+                            logoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        modifier = Modifier.testTag("preview_change_logo")
+                    ) {
+                        Icon(imageVector = Icons.Default.Image, contentDescription = "লোগো পরিবর্তন", tint = Color.White)
+                    }
                     IconButton(
                         onClick = { scale = (scale + 0.2f).coerceAtMost(2.5f) },
                         modifier = Modifier.testTag("preview_zoom_in")
@@ -207,7 +240,15 @@ fun PreviewScreen(
                         .border(1.5.dp, Color(0xFF14462D), RoundedCornerShape(4.dp))
                         .padding(14.dp)
                 ) {
-                    A4CertificateContent(certificate = certificate)
+                    A4CertificateContent(
+                        certificate = certificate,
+                        unionProfile = unionProfile,
+                        onChangeLogo = {
+                            logoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(30.dp))
@@ -217,7 +258,11 @@ fun PreviewScreen(
 }
 
 @Composable
-fun A4CertificateContent(certificate: GeneratedCertificate) {
+fun A4CertificateContent(
+    certificate: GeneratedCertificate,
+    unionProfile: UnionProfile? = null,
+    onChangeLogo: (() -> Unit)? = null
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -225,40 +270,41 @@ fun A4CertificateContent(certificate: GeneratedCertificate) {
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Government Emblem Placeholder
+        // Union Parishad Logo (Supports custom uploaded logo or authentic UP monogram)
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .border(1.2.dp, Color(0xFF006A4E), CircleShape),
+                .clickable { onChangeLogo?.invoke() },
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFF42A41)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "★",
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
+            if (!unionProfile?.logoUri.isNullOrBlank()) {
+                AsyncImage(
+                    model = unionProfile?.logoUri,
+                    contentDescription = "ইউপি লোগো",
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .border(1.2.dp, Color(0xFF006A4E), CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_up_logo),
+                    contentDescription = "ইউনিয়ন পরিষদ মনোগ্রাম",
+                    modifier = Modifier.size(48.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(3.dp))
         Text(
-            text = "গণপ্রজাতন্ত্রী বাংলাদেশ সরকার",
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-            color = Color.Black
+            text = "স্থানীয় সরকার বিভাগ",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF005F41)),
+            letterSpacing = 0.5.sp
         )
         Text(
             text = certificate.unionName,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = Color(0xFF005F41)
+            color = Color.Black
         )
         Text(
             text = "উপজেলা: ${certificate.upazila}, জেলা: ${certificate.district}",
@@ -270,15 +316,21 @@ fun A4CertificateContent(certificate: GeneratedCertificate) {
         HorizontalDivider(color = Color(0xFFB4BEB9), thickness = 0.8.dp)
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Title and Photo Row
+        // Title and Photo Row (Conditional Photo: Only for certificates that require photo)
+        val certType = CertificateRegistry.findById(certificate.certificateTypeId)
+        val requiresPhoto = certType?.requiresPhoto == true
+        val hasPhoto = !certificate.applicantPhotoUri.isNullOrBlank()
+        val shouldShowPhoto = requiresPhoto
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(modifier = Modifier.width(60.dp)) // balance photo width
+            if (shouldShowPhoto) {
+                Spacer(modifier = Modifier.width(54.dp)) // balance photo width
+            }
             Box(
-                modifier = Modifier
-                    .weight(1f),
+                modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
@@ -295,29 +347,31 @@ fun A4CertificateContent(certificate: GeneratedCertificate) {
                 }
             }
 
-            // Top right photo box
-            Box(
-                modifier = Modifier
-                    .size(54.dp, 66.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .border(0.8.dp, Color.Gray, RoundedCornerShape(3.dp))
-                    .background(Color(0xFFF8F9FA)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!certificate.applicantPhotoUri.isNullOrBlank()) {
-                    AsyncImage(
-                        model = certificate.applicantPhotoUri,
-                        contentDescription = "ছবি",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Text(
-                        text = "পাসপোর্ট\nছবি",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center
-                    )
+            if (shouldShowPhoto) {
+                // Top right photo box
+                Box(
+                    modifier = Modifier
+                        .size(54.dp, 66.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .border(0.8.dp, Color.Gray, RoundedCornerShape(3.dp))
+                        .background(Color(0xFFF8F9FA)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (hasPhoto) {
+                        AsyncImage(
+                            model = certificate.applicantPhotoUri,
+                            contentDescription = "ছবি",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = "পাসপোর্ট\nছবি",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <!-- Top arc path for গণপ্রজাতন্ত্রী বাংলাদেশ -->
+    <path id="topTextArc" d="M 40,150 A 110,110 0 1,1 260,150" fill="none" />
+    <!-- Bottom arc path for সরকার -->
+    <path id="bottomTextArc" d="M 230,150 A 110,110 0 0,1 70,150" fill="none" />
+  </defs>
+
+  <!-- Outer Green Border -->
+  <circle cx="150" cy="150" r="144" fill="#FFFFFF" stroke="#006A4E" stroke-width="6" />
+
+  <!-- Inner Red Circle -->
+  <circle cx="150" cy="150" r="92" fill="#E11D48" />
+
+  <!-- 4 Red 5-pointed Stars in the white ring -->
+  <!-- Left Stars -->
+  <g fill="#E11D48">
+    <!-- Star 1 Left top -->
+    <polygon points="46,120 49,129 58,129 51,134 53,143 46,137 39,143 41,134 34,129 43,129" />
+    <!-- Star 2 Left bottom -->
+    <polygon points="68,175 71,184 80,184 73,189 75,198 68,192 61,198 63,189 56,184 65,184" />
+    <!-- Star 3 Right top -->
+    <polygon points="254,120 257,129 266,129 259,134 261,143 254,137 247,143 249,134 242,129 251,129" />
+    <!-- Star 4 Right bottom -->
+    <polygon points="232,175 235,184 244,184 237,189 239,198 232,192 225,198 227,189 220,184 229,184" />
+  </g>
+
+  <!-- Bengali Inscription on outer ring -->
+  <text font-family="'Noto Sans Bengali', Arial, sans-serif" font-size="21" font-weight="bold" fill="#006A4E" letter-spacing="1.5">
+    <textPath href="#topTextArc" startOffset="50%" text-anchor="middle">
+      গণপ্রজাতন্ত্রী বাংলাদেশ
+    </textPath>
+  </text>
+
+  <text font-family="'Noto Sans Bengali', Arial, sans-serif" font-size="22" font-weight="bold" fill="#006A4E" letter-spacing="2">
+    <textPath href="#bottomTextArc" startOffset="50%" text-anchor="middle">
+      সরকার
+    </textPath>
+  </text>
+
+  <!-- Golden Yellow Map of Bangladesh inside red circle -->
+  <path d="M 125,92 
+           C 130,90 138,91 144,95 
+           C 148,93 154,95 158,102 
+           C 165,103 175,100 183,98 
+           C 192,106 195,114 190,123 
+           C 182,128 178,136 179,144 
+           C 185,150 193,160 196,170 
+           C 200,182 195,198 190,210 
+           C 183,212 178,206 175,198 
+           C 172,192 165,190 159,182 
+           C 155,180 152,192 147,196 
+           C 140,198 135,194 130,196 
+           C 123,194 117,195 110,188 
+           C 107,178 114,168 115,156 
+           C 108,150 102,140 107,128 
+           C 112,122 116,112 114,104 
+           Z" 
+        fill="#FACC15" 
+        stroke="#EAB308" 
+        stroke-width="1.5" />
+</svg>

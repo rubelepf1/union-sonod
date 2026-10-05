@@ -321,10 +321,23 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
     fun openExistingPreview(cert: GeneratedCertificate) {
         _previewCertificate.value = cert
         viewModelScope.launch {
-            val file = PdfGenerator.generateCertificatePdf(getApplication(), cert)
+            val file = PdfGenerator.generateCertificatePdf(getApplication(), cert, logoUri = unionProfile.value?.logoUri)
             _generatedPdfFile.value = file
         }
         navigateTo(ScreenState.PREVIEW)
+    }
+
+    fun updateUnionLogo(newLogoUri: String?) {
+        viewModelScope.launch {
+            val current = unionProfile.value ?: UnionProfile(id = 1)
+            val updated = current.copy(logoUri = newLogoUri)
+            unionRepo.saveProfile(updated)
+            _statusMessage.value = "ইউনিয়ন পরিষদ লোগো সফলভাবে পরিবর্তন করা হয়েছে"
+            _previewCertificate.value?.let { cert ->
+                val file = PdfGenerator.generateCertificatePdf(getApplication(), cert, logoUri = newLogoUri)
+                _generatedPdfFile.value = file
+            }
+        }
     }
 
     fun deleteCertificate(cert: GeneratedCertificate) {
@@ -460,6 +473,8 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
 
             val issueDate = BanglaHelper.getCurrentDateBangla()
 
+            val photoToSave = if (type.requiresPhoto) state.applicantPhotoUri else null
+
             val entity = GeneratedCertificate(
                 certificateTypeId = type.id,
                 certificateTitle = type.title,
@@ -474,7 +489,7 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
                 nidOrBirthNo = state.nidOrBirthNo.trim(),
                 serialNo = serialNo,
                 issueDateBangla = issueDate,
-                applicantPhotoUri = state.applicantPhotoUri,
+                applicantPhotoUri = photoToSave,
                 customFieldsJson = customJson,
                 heirsJson = heirsJson,
                 generatedBodyText = bodyText,
@@ -491,7 +506,7 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
             // Trigger sync in background
             SyncManager.triggerImmediateSync(getApplication())
 
-            val pdf = PdfGenerator.generateCertificatePdf(getApplication(), savedCert)
+            val pdf = PdfGenerator.generateCertificatePdf(getApplication(), savedCert, logoUri = profile.logoUri)
             _generatedPdfFile.value = pdf
             _previewCertificate.value = savedCert
 

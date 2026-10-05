@@ -32,7 +32,8 @@ class CertificateRepository(
                     category = cached.category ?: builtin?.category ?: "নাগরিক সেবা",
                     specificFields = builtin?.specificFields ?: emptyList(),
                     bodyTemplate = cached.templateBn,
-                    isSuccession = cached.id == "succession"
+                    isSuccession = cached.id == "succession",
+                    requiresPhoto = builtin?.requiresPhoto ?: false
                 )
             }
         } else {

@@ -347,27 +347,55 @@ export default function CertificateDetailPage() {
       </div>
 
       {/* Official Printable Certificate (A4 Sheet layout for print & preview) */}
-      <div className="mt-8 bg-white p-8 md:p-12 rounded-2xl border-2 border-emerald-800 shadow-sm printable-area">
-        {/* National Emblem & Header */}
-        <div className="text-center pb-4 border-b-2 border-slate-300">
-          <div className="w-14 h-14 mx-auto rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-xs mb-2">
-            বাংলাদেশ
-          </div>
-          <p className="text-xs font-semibold text-slate-600">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</p>
-          <h2 className="text-xl md:text-2xl font-bold text-emerald-900 mt-1">
-            {cert.unions?.name_bn || (dataFields as any).union_name || 'ইউনিয়ন পরিষদ কার্যালয়'}
-          </h2>
-          <p className="text-xs text-slate-600 mt-0.5">
-            উপজেলা: {cert.unions?.upazila || (dataFields as any).upazila || '—'}, জেলা:{' '}
-            {cert.unions?.district || (dataFields as any).district || '—'}
-          </p>
+      {(() => {
+        const requiresPhotoList = ['citizenship', 'character', 'unmarried', 'non_remarriage', 'disability', 'freedom_fighter_child', 'permanent_resident'];
+        const shouldHavePhoto = requiresPhotoList.includes(cert.type_id) || Boolean((cert.certificate_types as any)?.requires_photo);
+        const applicantPhoto = (dataFields as any).applicant_photo_url || (dataFields as any).photo_url || (cert as any).applicant_photo_url;
 
-          <div className="inline-block mt-3 px-4 py-1 rounded-full bg-emerald-50 border border-emerald-300">
-            <h1 className="text-base md:text-lg font-extrabold text-emerald-800">
-              {cert.certificate_types?.title_bn || cert.type_id}
-            </h1>
-          </div>
-        </div>
+        return (
+          <div className="mt-8 bg-white p-8 md:p-12 rounded-2xl border-2 border-emerald-800 shadow-sm printable-area">
+            {/* Top Emblem & Header */}
+            <div className="text-center pb-4 border-b-2 border-slate-300 relative">
+              {/* Optional Photo on Top Right (ONLY for certificate types that require photo) */}
+              {shouldHavePhoto && (
+                <div className="absolute top-0 right-0 w-16 h-20 border border-slate-400 bg-slate-50 flex items-center justify-center overflow-hidden rounded">
+                  {applicantPhoto ? (
+                    <img src={applicantPhoto} alt="ছবি" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[10px] text-slate-400 text-center leading-tight">পাসপোর্ট<br />ছবি</span>
+                  )}
+                </div>
+              )}
+
+              {/* Union Parishad Logo / Monogram */}
+              {cert.unions?.logo_url ? (
+                <img
+                  src={cert.unions.logo_url}
+                  alt="ইউপি লোগো"
+                  className="w-14 h-14 mx-auto rounded-full object-cover border border-emerald-700 mb-1"
+                />
+              ) : (
+                <div className="w-14 h-14 mx-auto rounded-full border-2 border-emerald-700 bg-white flex flex-col items-center justify-center p-1 mb-1 shadow-xs">
+                  <div className="w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center text-white text-[10px] font-bold">
+                    ইউপি
+                  </div>
+                </div>
+              )}
+              <p className="text-xs font-bold text-emerald-800 tracking-wider">স্থানীয় সরকার বিভাগ</p>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 mt-1">
+                {cert.unions?.name_bn || (dataFields as any).union_name || 'ইউনিয়ন পরিষদ কার্যালয়'}
+              </h2>
+              <p className="text-xs text-slate-600 mt-0.5">
+                উপজেলা: {cert.unions?.upazila || (dataFields as any).upazila || '—'}, জেলা:{' '}
+                {cert.unions?.district || (dataFields as any).district || '—'}
+              </p>
+
+              <div className="inline-block mt-3 px-4 py-1 rounded-full bg-emerald-50 border border-emerald-300">
+                <h1 className="text-base md:text-lg font-extrabold text-emerald-800">
+                  {cert.certificate_types?.title_bn || cert.type_id}
+                </h1>
+              </div>
+            </div>
 
         {/* Serial No and Date */}
         <div className="flex items-center justify-between mt-4 pb-2 border-b border-slate-200 text-xs text-slate-700">
@@ -440,6 +468,8 @@ export default function CertificateDetailPage() {
           </div>
         </div>
       </div>
+        );
+      })()}
 
       {/* Delete Confirm Modal */}
       {showDeleteModal && (

@@ -158,6 +158,7 @@ fun FormScreen(
                 when (formState.currentStep) {
                     0 -> StepApplicantInfo(
                         formState = formState,
+                        requiresPhoto = certificateType?.requiresPhoto == true,
                         onApplicantNameChange = onApplicantNameChange,
                         onFatherOrHusbandNameChange = onFatherOrHusbandNameChange,
                         onMotherNameChange = onMotherNameChange,
@@ -199,6 +200,7 @@ fun FormScreen(
 @Composable
 fun StepApplicantInfo(
     formState: FormState,
+    requiresPhoto: Boolean = false,
     onApplicantNameChange: (String) -> Unit,
     onFatherOrHusbandNameChange: (String) -> Unit,
     onMotherNameChange: (String) -> Unit,
@@ -226,81 +228,106 @@ fun StepApplicantInfo(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Applicant Photo Upload Box
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .padding(12.dp)
-            ) {
-                Box(
+            androidx.compose.runtime.LaunchedEffect(requiresPhoto) {
+                if (!requiresPhoto && formState.applicantPhotoUri != null) {
+                    onRemovePhoto()
+                }
+            }
+
+            // Applicant Photo Upload Box (Only if certificate requires photo)
+            if (requiresPhoto) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .size(70.dp, 84.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
-                        .background(Color.White)
-                        .clickable { onPickPhoto() },
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(12.dp)
                 ) {
-                    if (formState.applicantPhotoUri != null) {
-                        AsyncImage(
-                            model = formState.applicantPhotoUri,
-                            contentDescription = "ছবি",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                    Box(
+                        modifier = Modifier
+                            .size(70.dp, 84.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                            .background(Color.White)
+                            .clickable { onPickPhoto() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (formState.applicantPhotoUri != null) {
+                            AsyncImage(
+                                model = formState.applicantPhotoUri,
+                                contentDescription = "ছবি",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.AddAPhoto,
+                                    contentDescription = "ছবি বাছুন",
+                                    tint = BdGreenPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = "ছবি",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "পাসপোর্ট সাইজ ছবি (প্রয়োজনীয়)",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
                         )
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.AddAPhoto,
-                                contentDescription = "ছবি বাছুন",
-                                tint = BdGreenPrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = "ছবি",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        Text(
+                            text = "সনদের ওপর ডান কোণে প্রিন্ট হবে",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row {
+                            OutlinedButton(
+                                onClick = onPickPhoto,
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Text(
+                                    text = if (formState.applicantPhotoUri != null) "পরিবর্তন" else "ছবি বাছুন",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                            if (formState.applicantPhotoUri != null) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = onRemovePhoto,
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "মুছুন", tint = BdRedAccent)
+                                }
+                            }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "পাসপোর্ট সাইজ ছবি (ঐচ্ছিক)",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
-                    )
-                    Text(
-                        text = "সনদের ওপর ডান কোণে প্রিন্ট হবে",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row {
-                        OutlinedButton(
-                            onClick = onPickPhoto,
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            modifier = Modifier.height(34.dp)
-                        ) {
-                            Text(
-                                text = if (formState.applicantPhotoUri != null) "পরিবর্তন" else "ছবি বাছুন",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                        if (formState.applicantPhotoUri != null) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = onRemovePhoto,
-                                modifier = Modifier.size(34.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = "মুছুন", tint = BdRedAccent)
-                            }
-                        }
+            } else {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "ℹ️ এই সনদের জন্য পাসপোর্ট সাইজ ছবির প্রয়োজন নেই।",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

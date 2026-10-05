@@ -8,7 +8,8 @@ data class CertificateType(
     val category: String,
     val specificFields: List<CertificateField> = emptyList(),
     val bodyTemplate: String,
-    val isSuccession: Boolean = false
+    val isSuccession: Boolean = false,
+    val requiresPhoto: Boolean = false
 )
 
 object CertificateRegistry {
@@ -19,6 +20,7 @@ object CertificateRegistry {
             englishName = "Citizenship Certificate",
             description = "জন্মসূত্রে ও স্থায়ীভাবে বাংলাদেশের নাগরিকত্বের প্রত্যয়ন",
             category = "নাগরিক সেবা",
+            requiresPhoto = true,
             specificFields = listOf(
                 CertificateField(
                     key = "nid_birth_no",
@@ -44,6 +46,7 @@ object CertificateRegistry {
             englishName = "Character Certificate",
             description = "উত্তম নৈতিক চরিত্র ও কোনো অপরাধমূলক কাজে লিপ্ত না থাকার প্রত্যয়ন",
             category = "নাগরিক সেবা",
+            requiresPhoto = true,
             specificFields = listOf(
                 CertificateField(
                     key = "nid_birth_no",
@@ -156,6 +159,7 @@ object CertificateRegistry {
             englishName = "Unmarried Certificate",
             description = "অদ্যাবধি কোনো বিবাহ বন্ধনে আবদ্ধ না হওয়ার প্রত্যয়ন",
             category = "নাগরিক সেবা",
+            requiresPhoto = true,
             specificFields = listOf(
                 CertificateField(
                     key = "nid_birth_no",
@@ -204,6 +208,7 @@ object CertificateRegistry {
             englishName = "Non-remarriage Certificate",
             description = "স্বামী/স্ত্রীর মৃত্যুর পর পুনরায় বিবাহ না করার প্রত্যয়ন",
             category = "সামাজিক সুরক্ষা",
+            requiresPhoto = true,
             specificFields = listOf(
                 CertificateField(
                     key = "late_spouse_name",
@@ -228,6 +233,7 @@ object CertificateRegistry {
             englishName = "Disability Certificate",
             description = "শারীরিক/দৃষ্টি/বুদ্ধি প্রতিবন্ধিতা সংক্রান্ত প্রাথমিক প্রত্যয়ন",
             category = "সামাজিক সুরক্ষা",
+            requiresPhoto = true,
             specificFields = listOf(
                 CertificateField(
                     key = "disability_type",
@@ -253,6 +259,7 @@ object CertificateRegistry {
             englishName = "Freedom Fighter Child Certificate",
             description = "বীর মুক্তিযোদ্ধার সন্তান/সন্ততি হিসেবে প্রত্যয়ন পত্র",
             category = "বিশেষ প্রত্যয়ন",
+            requiresPhoto = true,
             specificFields = listOf(
                 CertificateField(
                     key = "ff_name",
@@ -285,6 +292,7 @@ object CertificateRegistry {
             englishName = "Permanent Resident Certificate",
             description = "ইউনিয়নের নির্দিষ্ট গ্রাম ও ঠিকানায় স্থায়ী বসবাসের প্রত্যয়ন",
             category = "নাগরিক সেবা",
+            requiresPhoto = true,
             specificFields = listOf(
                 CertificateField(
                     key = "holding_no",

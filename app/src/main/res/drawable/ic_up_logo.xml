@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="300"
+    android:viewportHeight="300">
+
+    <!-- Outer Circular Ring - Deep National Green -->
+    <path
+        android:fillColor="#006A4E"
+        android:pathData="M150,150 m-144,0 a144,144 0 1,0 288,0 a144,144 0 1,0 -288,0" />
+
+    <!-- Inner White Ring -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M150,150 m-134,0 a134,134 0 1,0 268,0 a134,134 0 1,0 -268,0" />
+
+    <!-- Thin Gold Ring Accent -->
+    <path
+        android:strokeColor="#D97706"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M150,150 m-126,0 a126,126 0 1,0 252,0 a126,126 0 1,0 -252,0" />
+
+    <!-- Inner Green Disc -->
+    <path
+        android:fillColor="#005F41"
+        android:pathData="M150,150 m-96,0 a96,96 0 1,0 192,0 a96,96 0 1,0 -192,0" />
+
+    <!-- Inner Red Sun Disc -->
+    <path
+        android:fillColor="#DC2626"
+        android:pathData="M150,150 m-70,0 a70,70 0 1,0 140,0 a70,70 0 1,0 -140,0" />
+
+    <!-- 4 Red 5-pointed Stars in the white ring -->
+    <!-- Star 1 Left top -->
+    <path
+        android:fillColor="#DC2626"
+        android:pathData="M38,125 L41,133 L50,133 L43,138 L45,146 L38,141 L31,146 L33,138 L26,133 L35,133 Z" />
+    <!-- Star 2 Left bottom -->
+    <path
+        android:fillColor="#DC2626"
+        android:pathData="M56,178 L59,186 L68,186 L61,191 L63,199 L56,194 L49,199 L51,191 L44,186 L53,186 Z" />
+    <!-- Star 3 Right top -->
+    <path
+        android:fillColor="#DC2626"
+        android:pathData="M262,125 L265,133 L274,133 L267,138 L269,146 L262,141 L255,146 L257,138 L250,133 L259,133 Z" />
+    <!-- Star 4 Right bottom -->
+    <path
+        android:fillColor="#DC2626"
+        android:pathData="M244,178 L247,186 L256,186 L249,191 L251,199 L244,194 L237,199 L239,191 L232,186 L241,186 Z" />
+
+    <!-- Water Ripples (Blue/Cyan waves) -->
+    <path
+        android:strokeColor="#93C5FD"
+        android:strokeWidth="3.5"
+        android:fillColor="#00000000"
+        android:pathData="M110,188 Q130,182 150,188 T190,188" />
+    <path
+        android:strokeColor="#60A5FA"
+        android:strokeWidth="3"
+        android:fillColor="#00000000"
+        android:pathData="M116,196 Q133,191 150,196 T184,196" />
+
+    <!-- Water Lily (শাপলা - Shapla) Central Flower in Pure White & Golden highlights -->
+    <!-- Base calyx -->
+    <path
+        android:fillColor="#15803D"
+        android:pathData="M136,182 Q150,186 164,182 L158,175 Q150,178 142,175 Z" />
+
+    <!-- Center main petal -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#D97706"
+        android:strokeWidth="1.2"
+        android:pathData="M150,118 C144,136 142,156 150,175 C158,156 156,136 150,118 Z" />
+
+    <!-- Inner left petal -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#D97706"
+        android:strokeWidth="1.2"
+        android:pathData="M148,124 C136,138 132,156 142,175 C146,160 148,142 148,124 Z" />
+
+    <!-- Inner right petal -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#D97706"
+        android:strokeWidth="1.2"
+        android:pathData="M152,124 C164,138 168,156 158,175 C154,160 152,142 152,124 Z" />
+
+    <!-- Outer left petal -->
+    <path
+        android:fillColor="#FEF08A"
+        android:strokeColor="#D97706"
+        android:strokeWidth="1.2"
+        android:pathData="M142,136 C124,148 122,164 135,176 C138,162 140,150 142,136 Z" />
+
+    <!-- Outer right petal -->
+    <path
+        android:fillColor="#FEF08A"
+        android:strokeColor="#D97706"
+        android:strokeWidth="1.2"
+        android:pathData="M158,136 C176,148 178,164 165,176 C162,162 160,150 158,136 Z" />
+
+    <!-- Golden Ears of Paddy / Rice Sheaves on Left Side -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M130,205 C100,195 86,165 92,130" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M90,132 Q96,128 98,136 Q92,140 90,132 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M88,144 Q94,140 97,148 Q90,152 88,144 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M89,158 Q96,154 99,162 Q92,166 89,158 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M94,172 Q102,168 105,176 Q97,180 94,172 Z" />
+
+    <!-- Golden Ears of Paddy / Rice Sheaves on Right Side -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M170,205 C200,195 214,165 208,130" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M210,132 Q204,128 202,136 Q208,140 210,132 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M212,144 Q206,140 203,148 Q210,152 212,144 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M211,158 Q204,154 201,162 Q208,166 211,158 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M206,172 Q198,168 195,176 Q203,180 206,172 Z" />
+
+    <!-- Jute Leaves at Top (৩টি পাটপাতা) -->
+    <path
+        android:fillColor="#16A34A"
+        android:pathData="M150,96 C147,105 147,114 150,118 C153,114 153,105 150,96 Z" />
+    <path
+        android:fillColor="#16A34A"
+        android:pathData="M144,102 C138,108 141,116 148,118 C146,113 143,107 144,102 Z" />
+    <path
+        android:fillColor="#16A34A"
+        android:pathData="M156,102 C162,108 159,116 152,118 C154,113 157,107 156,102 Z" />
+</vector>
