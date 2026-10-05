@@ -78,6 +78,7 @@ fun UpSonodApp(viewModel: UpSonodViewModel) {
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         modifier = Modifier.fillMaxSize()
     ) { _ ->
         when (currentScreen) {

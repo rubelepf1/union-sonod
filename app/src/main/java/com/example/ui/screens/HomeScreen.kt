@@ -408,17 +408,18 @@ fun CertificateCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val (catBg, catTint) = getCategoryColor(cert.category)
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(BdGreenContainer),
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(catBg),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = getIconForCategory(cert.category),
                         contentDescription = cert.title,
-                        tint = BdGreenDark,
+                        tint = catTint,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -444,14 +445,14 @@ fun CertificateCard(
 
                 // Category Tag
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    color = catBg,
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = cert.category,
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold),
+                        color = catTint,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
                     )
                 }
             }
@@ -499,5 +500,17 @@ fun getIconForCategory(category: String): ImageVector {
         "বাণিজ্যিক সেবা" -> Icons.Default.Business
         "বিশেষ প্রত্যয়ন" -> Icons.Default.CardMembership
         else -> Icons.Default.Description
+    }
+}
+
+fun getCategoryColor(category: String): Pair<Color, Color> {
+    return when (category) {
+        "নাগরিক সেবা" -> Pair(Color(0xFFE8F5E9), Color(0xFF1B5E20))
+        "উত্তরাধিকার" -> Pair(Color(0xFFE3F2FD), Color(0xFF0D47A1))
+        "আর্থিক সেবা" -> Pair(Color(0xFFFFF8E1), Color(0xFFE65100))
+        "সামাজিক সুরক্ষা" -> Pair(Color(0xFFFCE4EC), Color(0xFFC2185B))
+        "বাণিজ্যিক সেবা" -> Pair(Color(0xFFEDE7F6), Color(0xFF512DA8))
+        "বিশেষ প্রত্যয়ন" -> Pair(Color(0xFFE0F2F1), Color(0xFF004D40))
+        else -> Pair(Color(0xFFECEFF1), Color(0xFF37474F))
     }
 }

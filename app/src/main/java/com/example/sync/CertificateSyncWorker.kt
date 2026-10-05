@@ -63,6 +63,20 @@ class CertificateSyncWorker(
             }
 
             // 3. Pull remote certificates into local cache
+            val localUnion = db.unionProfileDao().getUnionProfileSync()
+            var currentUnionName = localUnion?.unionName?.ifBlank { null }
+            var currentChairmanName = localUnion?.chairmanName?.ifBlank { null }
+
+            // If local profile is missing but user has unionId, fetch from Supabase
+            if ((currentUnionName == null || currentChairmanName == null) && !user.unionId.isNullOrBlank()) {
+                val remoteUnion = supabase.fetchUnionProfile(user.unionId)
+                if (remoteUnion != null) {
+                    db.unionProfileDao().saveUnionProfile(remoteUnion)
+                    currentUnionName = remoteUnion.unionName
+                    currentChairmanName = remoteUnion.chairmanName
+                }
+            }
+
             val remoteCerts = supabase.fetchRemoteCertificates()
             for (remoteJson in remoteCerts) {
                 val remoteId = remoteJson.getString("id")
@@ -71,7 +85,13 @@ class CertificateSyncWorker(
                     val data = remoteJson.optJSONObject("data")
                     val typeId = remoteJson.getString("type_id")
                     val serialNo = remoteJson.getString("serial_no")
-                    val unionName = user.fullName // fallback
+                    val unionName = data?.optString("union_name")?.ifBlank { null }
+                        ?: currentUnionName
+                        ?: "ইউনিয়ন পরিষদ"
+                    val chairmanName = data?.optString("chairman_name")?.ifBlank { null }
+                        ?: currentChairmanName
+                        ?: "চেয়ারম্যান"
+
                     val createdCert = GeneratedCertificate(
                         remoteId = remoteId,
                         syncStatus = SyncStatus.SYNCED,
@@ -90,7 +110,7 @@ class CertificateSyncWorker(
                         issueDateBangla = data?.optString("issue_date_bn", "") ?: "",
                         generatedBodyText = data?.optString("generated_body_text", "") ?: "",
                         unionName = unionName,
-                        chairmanName = "চেয়ারম্যান",
+                        chairmanName = chairmanName,
                         customFieldsJson = data?.optJSONObject("custom_fields")?.toString() ?: "{}",
                         heirsJson = data?.optJSONArray("heirs")?.toString()
                     )

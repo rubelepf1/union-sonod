@@ -212,20 +212,35 @@ object PdfGenerator {
         curY += 6f
         canvas.drawLine(margin + 18f, curY, width - margin - 18f, curY, linePaint)
 
-        // 5. Formal Bangla Body Text
-        curY += 16f
+        // 5. Formal Bangla Body Text & Heirs Table (with Auto-fit calculation)
+        val heirs = cert.heirsJson?.let { BanglaHelper.parseHeirsJson(it) } ?: emptyList()
+        val textWidth = (contentWidth - 36f).toInt()
+
+        // Determine if scaling is needed based on heirs count and text length
+        val hasManyHeirs = heirs.size > 4
+        val isVeryLongText = cert.generatedBodyText.length > 250
+
+        val bodyTextSize = when {
+            heirs.size >= 8 || (hasManyHeirs && isVeryLongText) -> 10.5f
+            hasManyHeirs || isVeryLongText -> 11.5f
+            else -> 12.5f
+        }
+        val lineSpacingMult = if (hasManyHeirs) 1.08f else 1.15f
+        val lineSpacingAdd = if (hasManyHeirs) 2f else 4f
+
+        curY += if (hasManyHeirs) 10f else 16f
+
         val bodyPaint = TextPaint().apply {
             color = Color.rgb(20, 20, 20)
-            textSize = 12.5f
+            textSize = bodyTextSize
             typeface = notoBengali
             isAntiAlias = true
         }
 
-        val textWidth = (contentWidth - 36f).toInt()
         val staticLayout = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             StaticLayout.Builder.obtain(cert.generatedBodyText, 0, cert.generatedBodyText.length, bodyPaint, textWidth)
                 .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                .setLineSpacing(5f, 1.15f)
+                .setLineSpacing(lineSpacingAdd, lineSpacingMult)
                 .setIncludePad(true)
                 .build()
         } else {
@@ -235,8 +250,8 @@ object PdfGenerator {
                 bodyPaint,
                 textWidth,
                 Layout.Alignment.ALIGN_NORMAL,
-                1.15f,
-                5f,
+                lineSpacingMult,
+                lineSpacingAdd,
                 true
             )
         }
@@ -246,12 +261,16 @@ object PdfGenerator {
         staticLayout.draw(canvas)
         canvas.restore()
 
-        curY += staticLayout.height + 12f
+        curY += staticLayout.height + (if (hasManyHeirs) 8f else 12f)
 
         // 6. Succession Heirs Table (if applicable)
-        val heirs = cert.heirsJson?.let { BanglaHelper.parseHeirsJson(it) } ?: emptyList()
         if (heirs.isNotEmpty()) {
-            curY = drawHeirsTable(canvas, heirs, margin + 18f, curY, textWidth.toFloat(), notoBengali)
+            val maxRowHeight = when {
+                heirs.size >= 8 -> 15.5f
+                heirs.size >= 5 -> 17.5f
+                else -> 20f
+            }
+            curY = drawHeirsTable(canvas, heirs, margin + 18f, curY, textWidth.toFloat(), notoBengali, maxRowHeight)
         }
 
         // 7. Official Bottom Footer Section (Chairman signature, Ward Member)
@@ -335,8 +354,24 @@ object PdfGenerator {
         if (!photoUriStr.isNullOrBlank()) {
             try {
                 val uri = Uri.parse(photoUriStr)
+                // First decode bounds only
+                val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 context.contentResolver.openInputStream(uri)?.use { stream ->
-                    bitmap = BitmapFactory.decodeStream(stream)
+                    BitmapFactory.decodeStream(stream, null, boundsOptions)
+                }
+
+                // Downsample large camera photos to max 300x300
+                var sampleSize = 1
+                while (boundsOptions.outWidth / sampleSize > 300 || boundsOptions.outHeight / sampleSize > 300) {
+                    sampleSize *= 2
+                }
+
+                val decodeOptions = BitmapFactory.Options().apply {
+                    inSampleSize = sampleSize
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                }
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    bitmap = BitmapFactory.decodeStream(stream, null, decodeOptions)
                 }
             } catch (_: Exception) {}
         }
@@ -384,7 +419,8 @@ object PdfGenerator {
         x: Float,
         y: Float,
         totalWidth: Float,
-        typeface: android.graphics.Typeface?
+        typeface: android.graphics.Typeface?,
+        rowHeight: Float = 20f
     ): Float {
         var curY = y + 6f
 
@@ -397,16 +433,18 @@ object PdfGenerator {
             color = Color.rgb(238, 243, 240)
             style = Paint.Style.FILL
         }
+        val headerFontSize = if (rowHeight < 18f) 8.5f else 10f
         val headerTextPaint = Paint().apply {
             color = Color.BLACK
-            textSize = 10f
+            textSize = headerFontSize
             isFakeBoldText = true
             this.typeface = typeface
             isAntiAlias = true
         }
+        val rowFontSize = if (rowHeight < 18f) 8.5f else 9.5f
         val rowTextPaint = Paint().apply {
             color = Color.rgb(30, 30, 30)
-            textSize = 9.5f
+            textSize = rowFontSize
             this.typeface = typeface
             isAntiAlias = true
         }
@@ -418,7 +456,7 @@ object PdfGenerator {
         val colRem = 85f
         val colName = totalWidth - (colSl + colRel + colAge + colRem)
 
-        val rowHeight = 20f
+        val textBaselineY = curY + (rowHeight * 0.7f)
 
         // Draw Table Header
         canvas.drawRect(x, curY, x + totalWidth, curY + rowHeight, headerBg)
@@ -431,17 +469,19 @@ object PdfGenerator {
         canvas.drawLine(x + colSl + colName + colRel + colAge, curY, x + colSl + colName + colRel + colAge, curY + rowHeight, tablePaint)
 
         // Header titles
-        canvas.drawText("ক্র.নং", x + 5f, curY + 14f, headerTextPaint)
-        canvas.drawText("ওয়ারিশগণের নাম", x + colSl + 6f, curY + 14f, headerTextPaint)
-        canvas.drawText("সম্পর্ক", x + colSl + colName + 6f, curY + 14f, headerTextPaint)
-        canvas.drawText("বয়স", x + colSl + colName + colRel + 6f, curY + 14f, headerTextPaint)
-        canvas.drawText("মন্তব্য", x + colSl + colName + colRel + colAge + 6f, curY + 14f, headerTextPaint)
+        canvas.drawText("ক্র.নং", x + 5f, textBaselineY, headerTextPaint)
+        canvas.drawText("ওয়ারিশগণের নাম", x + colSl + 6f, textBaselineY, headerTextPaint)
+        canvas.drawText("সম্পর্ক", x + colSl + colName + 6f, textBaselineY, headerTextPaint)
+        canvas.drawText("বয়স", x + colSl + colName + colRel + 6f, textBaselineY, headerTextPaint)
+        canvas.drawText("মন্তব্য", x + colSl + colName + colRel + colAge + 6f, textBaselineY, headerTextPaint)
 
         curY += rowHeight
 
         // Draw Rows
         for (i in heirs.indices) {
             val h = heirs[i]
+            val rowBaselineY = curY + (rowHeight * 0.7f)
+
             canvas.drawRect(x, curY, x + totalWidth, curY + rowHeight, tablePaint)
 
             canvas.drawLine(x + colSl, curY, x + colSl, curY + rowHeight, tablePaint)
@@ -450,11 +490,11 @@ object PdfGenerator {
             canvas.drawLine(x + colSl + colName + colRel + colAge, curY, x + colSl + colName + colRel + colAge, curY + rowHeight, tablePaint)
 
             val slText = BanglaHelper.toBanglaDigits((i + 1).toString())
-            canvas.drawText(slText, x + 8f, curY + 14f, rowTextPaint)
-            canvas.drawText(h.name.take(28), x + colSl + 6f, curY + 14f, rowTextPaint)
-            canvas.drawText(h.relation.take(12), x + colSl + colName + 6f, curY + 14f, rowTextPaint)
-            canvas.drawText(BanglaHelper.toBanglaDigits(h.age), x + colSl + colName + colRel + 6f, curY + 14f, rowTextPaint)
-            canvas.drawText(h.remarks.take(15), x + colSl + colName + colRel + colAge + 6f, curY + 14f, rowTextPaint)
+            canvas.drawText(slText, x + 8f, rowBaselineY, rowTextPaint)
+            canvas.drawText(h.name.take(28), x + colSl + 6f, rowBaselineY, rowTextPaint)
+            canvas.drawText(h.relation.take(12), x + colSl + colName + 6f, rowBaselineY, rowTextPaint)
+            canvas.drawText(BanglaHelper.toBanglaDigits(h.age), x + colSl + colName + colRel + 6f, rowBaselineY, rowTextPaint)
+            canvas.drawText(h.remarks.take(15), x + colSl + colName + colRel + colAge + 6f, rowBaselineY, rowTextPaint)
 
             curY += rowHeight
         }

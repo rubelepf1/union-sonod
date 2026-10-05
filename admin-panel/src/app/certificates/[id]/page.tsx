@@ -19,6 +19,7 @@ import {
   User,
   Hash,
   FileText,
+  Printer,
 } from 'lucide-react';
 
 export default function CertificateDetailPage() {
@@ -167,8 +168,16 @@ export default function CertificateDetailPage() {
           <span>সনদ তালিকায় ফিরে যান</span>
         </Link>
 
-        {/* Action Buttons: Delete / Restore */}
+        {/* Action Buttons: Print / Delete / Restore */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 bg-bdGreen-600 hover:bg-bdGreen-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition"
+          >
+            <Printer className="w-4 h-4" />
+            <span>প্রিন্ট সনদ (Print A4)</span>
+          </button>
+
           {isDeleted ? (
             <button
               onClick={handleRestore}
@@ -333,6 +342,101 @@ export default function CertificateDetailPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Official Printable Certificate (A4 Sheet layout for print & preview) */}
+      <div className="mt-8 bg-white p-8 md:p-12 rounded-2xl border-2 border-emerald-800 shadow-sm printable-area">
+        {/* National Emblem & Header */}
+        <div className="text-center pb-4 border-b-2 border-slate-300">
+          <div className="w-14 h-14 mx-auto rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-xs mb-2">
+            বাংলাদেশ
+          </div>
+          <p className="text-xs font-semibold text-slate-600">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</p>
+          <h2 className="text-xl md:text-2xl font-bold text-emerald-900 mt-1">
+            {cert.unions?.name_bn || (dataFields as any).union_name || 'ইউনিয়ন পরিষদ কার্যালয়'}
+          </h2>
+          <p className="text-xs text-slate-600 mt-0.5">
+            উপজেলা: {cert.unions?.upazila || (dataFields as any).upazila || '—'}, জেলা:{' '}
+            {cert.unions?.district || (dataFields as any).district || '—'}
+          </p>
+
+          <div className="inline-block mt-3 px-4 py-1 rounded-full bg-emerald-50 border border-emerald-300">
+            <h1 className="text-base md:text-lg font-extrabold text-emerald-800">
+              {cert.certificate_types?.title_bn || cert.type_id}
+            </h1>
+          </div>
+        </div>
+
+        {/* Serial No and Date */}
+        <div className="flex items-center justify-between mt-4 pb-2 border-b border-slate-200 text-xs text-slate-700">
+          <div>
+            <strong>স্মারক নং:</strong> {cert.serial_no || '—'}
+          </div>
+          <div>
+            <strong>তারিখ:</strong> {(dataFields as any).issue_date_bn || formatBanglaDateTime(cert.created_at).split(' ')[0]}
+          </div>
+        </div>
+
+        {/* Body Text */}
+        <div className="mt-6 text-sm text-slate-800 leading-relaxed text-justify whitespace-pre-line">
+          {(dataFields as any).generated_body_text ||
+            `এই মর্মে প্রত্যয়ন করা যাইতেছে যে, ${(dataFields as any).applicant_name || 'আবেদনকারী'}, পিতা/স্বামী: ${
+              (dataFields as any).father_husband_name || '—'
+            }, মাতা: ${(dataFields as any).mother_name || '—'}, গ্রাম: ${
+              (dataFields as any).village || '—'
+            }, ওয়ার্ড নং: ${(dataFields as any).ward_no || '—'}, ডাকঘর: ${
+              (dataFields as any).post_office || '—'
+            }, অত্র ইউনিয়নের একজন স্থায়ী বাসিন্দা ও জন্মসূত্রে বাংলাদেশের নাগরিক। তিনি রাষ্ট্রবিরোধী কোনো কার্যকলাপে জড়িত নহেন।`}
+        </div>
+
+        {/* Heirs Table (if applicable) */}
+        {Array.isArray((dataFields as any).heirs) && (dataFields as any).heirs.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-xs font-bold text-slate-700 mb-2">ওয়ারিশগণের তালিকা:</h4>
+            <table className="w-full text-left border-collapse border border-slate-300 text-xs">
+              <thead className="bg-slate-100">
+                <tr>
+                  <th className="border border-slate-300 p-2">ক্র.নং</th>
+                  <th className="border border-slate-300 p-2">নাম</th>
+                  <th className="border border-slate-300 p-2">সম্পর্ক</th>
+                  <th className="border border-slate-300 p-2">বয়স</th>
+                  <th className="border border-slate-300 p-2">মন্তব্য</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(dataFields as any).heirs.map((h: any, idx: number) => (
+                  <tr key={idx}>
+                    <td className="border border-slate-300 p-2">{toBanglaNumber(idx + 1)}</td>
+                    <td className="border border-slate-300 p-2 font-medium">{h.name || h.heirName}</td>
+                    <td className="border border-slate-300 p-2">{h.relation}</td>
+                    <td className="border border-slate-300 p-2">{toBanglaNumber(h.age || '')}</td>
+                    <td className="border border-slate-300 p-2">{h.remarks || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Signatures Block */}
+        <div className="mt-16 pt-8 flex items-end justify-between text-xs text-slate-800">
+          <div className="text-center">
+            <div className="w-36 border-t border-slate-400 mb-1 mx-auto"></div>
+            <p className="font-bold">সত্যায়নকারী ইউপি সদস্য</p>
+            <p className="text-[11px] text-slate-500">স্বাক্ষর ও সিল</p>
+          </div>
+
+          <div className="text-center">
+            <div className="w-44 border-t border-slate-400 mb-1 mx-auto"></div>
+            <p className="font-bold text-sm">
+              {cert.unions?.chairman_name || (dataFields as any).chairman_name || 'চেয়ারম্যান'}
+            </p>
+            <p className="font-semibold text-emerald-800">চেয়ারম্যান</p>
+            <p className="text-[11px] text-slate-600">
+              {cert.unions?.name_bn || (dataFields as any).union_name || 'ইউনিয়ন পরিষদ'}
+            </p>
           </div>
         </div>
       </div>

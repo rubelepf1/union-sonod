@@ -82,10 +82,16 @@ class UpSonodViewModel(application: Application) : AndroidViewModel(application)
     val dynamicCertificateTypes: StateFlow<List<CertificateType>> = certRepo.certificateTypes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CertificateRegistry.ALL_TYPES)
 
-    private val _currentScreen = MutableStateFlow(ScreenState.HOME)
+    private val _currentScreen = MutableStateFlow(
+        if (!sessionManager.isLoggedIn() && !sessionManager.isOfflineGuestMode.value) {
+            ScreenState.LOGIN
+        } else {
+            ScreenState.HOME
+        }
+    )
     val currentScreen: StateFlow<ScreenState> = _currentScreen.asStateFlow()
 
-    private val _screenBackStack = MutableStateFlow<List<ScreenState>>(listOf(ScreenState.HOME))
+    private val _screenBackStack = MutableStateFlow<List<ScreenState>>(listOf(_currentScreen.value))
 
     private val _selectedType = MutableStateFlow<CertificateType?>(null)
     val selectedType: StateFlow<CertificateType?> = _selectedType.asStateFlow()

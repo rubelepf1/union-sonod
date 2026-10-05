@@ -32,3 +32,25 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Print Styles for A4 Certificates */
+@media print {
+  nav, aside, header, .no-print, .print-hidden {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .printable-area {
+    display: block !important;
+    box-shadow: none !important;
+    border: 2px solid #14462d !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 28px !important;
+    page-break-inside: avoid;
+  }
+}

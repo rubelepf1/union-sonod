@@ -34,6 +34,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -83,14 +85,28 @@ fun HistoryScreen(
     onNavigate: (ScreenState) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedDateFilter by remember { mutableStateOf("সকল") }
     var certificateToDelete by remember { mutableStateOf<GeneratedCertificate?>(null) }
 
+    val todayBangla = remember { BanglaHelper.getCurrentDateBangla().replace(" খ্রিঃ", "").trim() }
+    val currentMonthBangla = remember {
+        val parts = todayBangla.split(" ")
+        if (parts.size >= 2) parts[1].trim() else ""
+    }
+
     val filteredList = certificates.filter { cert ->
-        searchQuery.isBlank() ||
+        val matchesDate = when (selectedDateFilter) {
+            "আজকের" -> cert.issueDateBangla.contains(todayBangla) || cert.issueDateBangla == todayBangla
+            "এই মাসের" -> currentMonthBangla.isNotBlank() && cert.issueDateBangla.contains(currentMonthBangla)
+            else -> true
+        }
+        val matchesSearch = searchQuery.isBlank() ||
                 cert.applicantName.contains(searchQuery, ignoreCase = true) ||
                 cert.certificateTitle.contains(searchQuery, ignoreCase = true) ||
                 cert.serialNo.contains(searchQuery, ignoreCase = true) ||
                 cert.village.contains(searchQuery, ignoreCase = true)
+
+        matchesDate && matchesSearch
     }
 
     if (certificateToDelete != null) {
@@ -214,6 +230,35 @@ fun HistoryScreen(
                             style = MaterialTheme.typography.labelSmall.copy(color = GoldAccent)
                         )
                     }
+                }
+            }
+
+            // Date Filter Chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("সকল", "আজকের", "এই মাসের").forEach { filter ->
+                    val isSelected = selectedDateFilter == filter
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedDateFilter = filter },
+                        label = {
+                            Text(
+                                text = filter,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = BdGreenPrimary,
+                            selectedLabelColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    )
                 }
             }
 
